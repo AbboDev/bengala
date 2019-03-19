@@ -7,13 +7,16 @@ const WebSocket = require('ws');
 const Mongo = require('mongodb');
 
 module.exports = class Bengala {
+  /**
+   *
+   */
   constructor(mongo_conf, wss_conf) {
     this.user_data = {
       app: null,
       database: null,
       collection: null,
       permission: {
-        passive_mode: true, // Create collection if not present
+        passive_mode: true, // Automatically read page and create collection if not present
       },
     };
 
@@ -35,10 +38,16 @@ module.exports = class Bengala {
     this.init();
   }
 
+  /**
+   *
+   */
   init() {
     this.wss.on('connection', this.onWSSConnection.bind(this));
   }
 
+  /**
+   *
+   */
   onWSSConnection(ws, req) {
     this.user_data.app = ws.id = uniqid(); // equal to client ID
     console.info('Open new connection: ', ws.id);
@@ -52,16 +61,25 @@ module.exports = class Bengala {
     ws.on('message', this.onWSSMessage.bind(this));
   }
 
+  /**
+   *
+   */
   onWSSClose() {
     console.info('Connection closed');
     return;
   }
 
+  /**
+   *
+   */
   onWSSError(error) {
     console.error('Found error: ', error);
     return;
   }
 
+  /**
+   *
+   */
   onWSSMessage(message) {
     try {
       message = JSON.parse(message);
@@ -82,32 +100,48 @@ module.exports = class Bengala {
       }
 
       if (this.user_data.database && this.user_data.collection) {
-        console.log(this.connectMongo());
+        this.connectMongo()
+        .then((collection) => {
+          delete message.wid;
+          delete message.pid;
+          this.insertMongoTimelog(collection, message);
+        })
+        .catch((error) => {
+          console.error(error);
+        });
       }
     }
   }
 
+  /**
+   *
+   */
   connectMongo() {
-    return this.mongo.connect(this.mongo_conf.path(), {
-      useNewUrlParser: true
-    })
-    .then((client) => {
-      return new Promise((resolve, reject) => {
-        let db = client.db(this.mongo_conf.database(this.user_data));
-
-        resolve(db);
+    return new Promise((resolveConnect, rejectConnect) => {
+      this.mongo.connect(this.mongo_conf.path(), {
+        useNewUrlParser: true
       })
-    })
-    .then((db) => this.checkMongoDatabase(db))
-    .then((db) => this.checkMongoCollection(db))
-    .then((collection) => {
-      // console.log('collection', collection);
-      return collection;
-    }).catch((error) => {
-      console.error(error);
+      .then((client) => {
+        return new Promise((resolve, reject) => {
+          let db = client.db(this.mongo_conf.database(this.user_data));
+
+          resolve(db);
+        })
+      })
+      .then((db) => this.checkMongoDatabase(db))
+      .then((db) => this.checkMongoCollection(db))
+      .then((collection) => {
+        resolveConnect(collection);
+      }).catch((error) => {
+        console.error(error);
+        rejectConnect(error);
+      });
     });
   }
 
+  /**
+   *
+   */
   checkMongoDatabase(db) {
     return new Promise((resolve, reject) => {
       db.admin().listDatabases((error, dbs) => {
@@ -128,6 +162,9 @@ module.exports = class Bengala {
     });
   }
 
+  /**
+   *
+   */
   checkMongoCollection(db) {
     return new Promise((resolve, reject) => {
       db.listCollections().toArray((error, dbcs) => {
@@ -135,16 +172,18 @@ module.exports = class Bengala {
           reject(error);
         }
 
-        // this.user_data
-        // permission
-        // passive_mode
-
         let dbc_exist = dbcs.some((dbc) => {
           return dbc.name === this.mongo_conf.collection(this.user_data);
         });
 
         if (dbc_exist === false) {
-          reject(new Error('Collection not found: ' + this.user_data.collection));
+          if (this.user_data.permission.passive_mode === true) {
+            db.createCollection(this.mongo_conf.collection(this.user_data), {
+              
+            });
+          } else {
+            reject(new Error('Collection not found: ' + this.user_data.collection));
+          }
         }
 
         resolve(db.collection(this.mongo_conf.collection(this.user_data)));
@@ -152,7 +191,19 @@ module.exports = class Bengala {
     });
   }
 
-  insertMongoTimelog(collection) {
+  /**
+   *
+   */
+  insertMongoTimelog(collection, data) {
+    if (data.ts !== null) {
+      return collection.insertOne(data);
+    }
+  }
+
+  /**
+   *
+   */
+  getAllMongoTimelog(collection) {
     collection.find({})
     .toArray()
     .then((response) => {
@@ -163,8 +214,25 @@ module.exports = class Bengala {
     });
   }
 
+  /**
+   *
+   */
+  getFilteredMongoTimelog(collection, filter) {
+    collection.find({})
+    .toArray()
+    .then((response) => {
+      console.log(response);
+    })
+    .catch((error) => {
+      console.error(error);
+    });
+  }
+
+  /**
+   *
+   */
   sendWSSWebsiteID(ws) {
-    ws.send(JSON.stringify(ws.id), (error) => {
+    ws.send(JSON.stringify({uid: ws.id}), (error) => {
       if (error == undefined) {
         return;
       } else {
@@ -173,6 +241,9 @@ module.exports = class Bengala {
     });
   }
 
+  /**
+   *
+   */
   getWSSConnectionIP(req) {
     if (req.headers['x-forwarded-for'] === undefined) {
       return req.connection.remoteAddress;

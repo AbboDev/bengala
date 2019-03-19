@@ -4,7 +4,7 @@
  * _beng$pid: page ID
  */
 (function(debug) {
-  var _beng$wid = '00001';
+  var _beng$wid;
   var _beng$uid;
   var _beng$pid = btoa(window.location.pathname);
 
@@ -20,6 +20,8 @@
     'https': 443,
     'dev': 3000,
   };
+
+  var clockRate = 1000;
 
   function waitId() {
     if (typeof _beng$wid !== "undefined") {
@@ -67,7 +69,7 @@
           ws.send(JSON.stringify(init));
         };
 
-        // var int = setInterval(function() {
+        var int = setInterval(function() {
           if (debug) console.log(ws.readyState);
           var heart_beat = {
             ts: Date.now(),
@@ -85,9 +87,9 @@
               }
             });
           } else {
-            // clearInterval(int);
+            clearInterval(int);
           }
-        // }, 1000);
+        }, clockRate);
       } else {
         var ws;
         console.warn('WebSocket not supported');
