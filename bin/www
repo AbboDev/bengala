@@ -4,7 +4,6 @@
  * Module dependencies.
  */
 const app = require('../app');
-const wss = require('../sockets/app');
 const debug = require('debug')('bengala:server');
 const http = require('http');
 
@@ -18,6 +17,24 @@ app.set('port', port);
  * Create HTTP server
  */
 const server = http.createServer(app);
+
+/**
+ * Listen on provided port, on all network interfaces.
+ */
+const Bengala = require('../sockets/app');
+
+const mongo_conf = {
+  port: 27017,
+  protocol: 'mongodb',
+  domain: 'localhost',
+  prefix: 'beng-',
+};
+
+const wss_conf = {
+  port: 9080
+};
+
+let bengala = new Bengala(mongo_conf, wss_conf);
 
 /**
  * Listen on provided port, on all network interfaces.

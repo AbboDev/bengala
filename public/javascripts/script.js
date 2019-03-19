@@ -1,13 +1,18 @@
 /**
- * _beng$id: website ID
- * $beng_id: current user ID
- * _bengçid: current page ID
+ * _beng$wid: website ID
+ * _beng$uid: user ID / server socket ID
+ * _beng$pid: page ID
  */
 (function(debug) {
+  var _beng$wid = '00001';
+  var _beng$uid;
+  var _beng$pid = btoa(window.location.pathname);
+
   var domain = 'bengala.crystalware.test';
   var api = {
     'auth': '/auth'
   };
+
   var ports = {
     'ws': 9080,
     'wss': 9443,
@@ -17,9 +22,7 @@
   };
 
   function waitId() {
-    if (debug) console.log(typeof _beng_id);
-
-    if (typeof _beng$id !== "undefined") {
+    if (typeof _beng$wid !== "undefined") {
       if (debug) var listener = document.getElementById('listener');
 
       if (!Date.now) {
@@ -28,25 +31,25 @@
         }
       }
 
-      var xhr = (window.XMLHttpRequest)
-        ? new XMLHttpRequest()
-        : new ActiveXObject("Microsoft.XMLHTTP");
-      xhr.onreadystatechange = function() {
-        if (this.readyState == 4 && this.status == 200) {
-          if (debug) console.log(this);
-        }
-      };
-      xhr.open('POST', domain + 'api/' + api.auth, true);
-      xhr.send();
-
       if (window.WebSocket) {
         var ws = new WebSocket('ws://bengala.crystalware.test:9080');
 
-        ws.onmessage = function(msg) {
-          if (debug) console.log(msg.data);
-          if (debug) debuggerMsg(msg);
+        ws.onmessage = function(message) {
+          let data = message.data;
 
-          ws.send(_beng$id);
+          try {
+            data = JSON.parse(message.data);
+          } catch (e) {
+            if (debug) console.warn('Error during parse message to JSON');
+          } finally {
+            if (debug) console.log(data);
+            if (debug) debuggerMsg(message);
+
+            if (_beng$uid === undefined && data.uid !== undefined && data.uid !== false) {
+              _beng$uid = data.uid;
+              if (debug) console.log(_beng$uid);
+            }
+          }
         };
 
         ws.onerror = function(error) {
@@ -54,32 +57,37 @@
         };
 
         ws.onclose = function() {
-
+          if (debug) console.info('WebSocket is closed...');
         };
 
         ws.onopen = function() {
-          if (debug) console.log('websocket is connected ...');
+          if (debug) console.info('WebSocket is connected...');
 
-          var init = {ts: Date.now(), ci: _beng$id}
+          var init = {ts: Date.now(), wid: _beng$wid, pid: _beng$pid};
           ws.send(JSON.stringify(init));
         };
 
-        var int = setInterval(function() {
+        // var int = setInterval(function() {
           if (debug) console.log(ws.readyState);
-          var heart_beat = {ts: Date.now(), ci: _beng$id, ui:}
+          var heart_beat = {
+            ts: Date.now(),
+            wid: _beng$wid,
+            uid: _beng$uid,
+            pid: _beng$pid
+          };
 
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify(heart_beat), function(error) {
               if (error == undefined) {
                 return;
               } else {
-                console.log('Async error: ' + error);
+                console.error('Async error: ' + error);
               }
             });
           } else {
-            clearInterval(int);
+            // clearInterval(int);
           }
-        }, 1000);
+        // }, 1000);
       } else {
         var ws;
         console.warn('WebSocket not supported');
