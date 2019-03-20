@@ -1,7 +1,9 @@
 {
   "name": "bengala",
   "version": "0.0.2",
-  "private": false,
+  "description": "",
+  "main": "app.js",
+  "author": "Thomas Abbondi <thomas.abbondi@crystalware.cloud>",
   "scripts": {
     "start": "node ./app.js",
     "dev": "nodemon ./app.js"
