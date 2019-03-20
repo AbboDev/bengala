@@ -49,6 +49,8 @@ module.exports = class Bengala {
    *
    */
   onWSSConnection(ws, req) {
+    console.log(this.wss_conf.port);
+
     this.user_data.app = ws.id = uniqid(); // equal to client ID
     console.info('Open new connection: ', ws.id);
 
@@ -178,9 +180,7 @@ module.exports = class Bengala {
 
         if (dbc_exist === false) {
           if (this.user_data.permission.passive_mode === true) {
-            db.createCollection(this.mongo_conf.collection(this.user_data), {
-              
-            });
+            db.createCollection(this.mongo_conf.collection(this.user_data), {});
           } else {
             reject(new Error('Collection not found: ' + this.user_data.collection));
           }

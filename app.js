@@ -1,28 +1,57 @@
+#!/usr/bin/env node
+
 /**
- *
+ * Module dependencies.
  */
-
-const express = require('express');
-
-const path = require('path');
 const cookieParser = require('cookie-parser');
-const logger = require('morgan');
 
-const app = express();
+const fs = require('fs')
+const path = require('path');
+const finalhandler = require('finalhandler')
+const morgan = require('morgan');
 
-const indexRouter = require('./routes/index');
-const apiRouter = require('./routes/api');
-
-app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
+const accessLogStream = fs.createWriteStream(path.join(__dirname, 'logs/access.log'), {
+  flags: 'a'
+});
+const logger = morgan('combined', {
+  stream: accessLogStream
+});
 
 /**
- * Defines routes
+ * Get port from environment
  */
-app.use('/', indexRouter);
-app.use('/api', apiRouter);
+const port = normalizePort(process.env.PORT || '9080');
 
-module.exports = app;
+function normalizePort(val) {
+  let port = parseInt(val, 10);
+
+  if (isNaN(port)) {
+    // named pipe
+    return val;
+  }
+
+  if (port >= 0) {
+    // port number
+    return port;
+  }
+
+  return false;
+}
+
+/**
+ * Create new Bengala Server
+ */
+const Bengala = require('./classes/server');
+
+const mongo_conf = {
+  port: 27017,
+  protocol: 'mongodb',
+  domain: 'localhost',
+  prefix: 'beng-',
+};
+
+const wss_conf = {
+  port: port
+};
+
+let bengala = new Bengala(mongo_conf, wss_conf);
