@@ -5,19 +5,19 @@ require('./static-server');
 /**
  * Module dependencies.
  */
-const cookieParser = require('cookie-parser');
+// const cookieParser = require('cookie-parser');
 
-const fs = require('fs')
-const path = require('path');
-const finalhandler = require('finalhandler')
-const morgan = require('morgan');
+// const fs = require('fs');
+// const path = require('path');
+// const finalhandler = require('finalhandler');
+// const morgan = require('morgan');
 
-const accessLogStream = fs.createWriteStream(path.join(__dirname, 'logs/access.log'), {
-  flags: 'a'
-});
-const logger = morgan('combined', {
-  stream: accessLogStream
-});
+// const accessLogStream = fs.createWriteStream(path.join(__dirname, 'logs/access.log'), {
+//     flags: 'a'
+// });
+// const logger = morgan('combined', {
+//     stream: accessLogStream
+// });
 
 /**
  * Get port from environment
@@ -43,7 +43,7 @@ function normalizePort(val) {
 /**
  * Create new Bengala Server
  */
-const Bengala = require('./classes/server');
+const Bengala = require('./classes/bengala');
 
 const mongo_conf = {
   port: 27017,
@@ -56,4 +56,9 @@ const wss_conf = {
   port: port
 };
 
-let bengala = new Bengala(mongo_conf, wss_conf);
+let bengala = new Bengala(wss_conf);
+
+let bengala_mongo = new Bengala.Mongo(mongo_conf);
+bengala.setupMongo(bengala_mongo);
+
+bengala.start();

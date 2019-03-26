@@ -3,10 +3,15 @@
   "version": "0.0.2",
   "description": "",
   "main": "app.js",
-  "author": "Thomas Abbondi <thomas.abbondi@crystalware.cloud>",
+  "author": {
+    "name": "Thomas Abbondi",
+    "email": "thomas.abbondi@crystalware.cloud",
+    "url": "https://www.crystalware.cloud"
+  },
   "scripts": {
     "start": "node ./app.js",
-    "dev": "nodemon ./app.js"
+    "lint": "eslint --fix --cache app.js static-server.js classes/**",
+    "dev": "nodemon app.js --exec \"npm run lint && node\""
   },
   "dependencies": {
     "cookie-parser": "~1.4.3",
@@ -18,7 +23,13 @@
     "uniqid": "^5.0.3",
     "ws": "^6.2.0"
   },
+  "files": [
+    "browser.js",
+    "app.js",
+    "classes/*.js"
+  ],
   "devDependencies": {
+    "eslint": "^5.15.3",
     "nodemon": "^1.18.10"
   }
 }

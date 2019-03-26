@@ -98,14 +98,14 @@ var _bengala = (function() {
       $wid: null,
       $uid: null,
       $pid: function() {
-        return btoa(window.location.pathname);
+        return encodeURIComponent(btoa(window.location.pathname));
       },
       setUserId: function(uid) {
         this.$uid = uid;
         var d = new Date();
         d.setTime(d.getTime() + (60 * 60 * 1000));
         var expires = "expires=" + d.toUTCString();
-        document.cookie = this.prefix + this.$uid + '=' + encodeURIComponent(this.$pid()) + '; expires=' + expires + '; path=/';
+        document.cookie = this.prefix + this.$uid + '=' + this.$pid() + '; expires=' + expires + '; path=/';
       },
       checkUserId: function() {
         var cookies = document.cookie.split(';');
@@ -199,7 +199,7 @@ var _bengala = (function() {
     },
 
     wait: function() {
-      if (typeof _beng$wid !== 'undefined') {
+      if (typeof _beng$wid !== 'undefined' && _beng$wid !== null && _beng$wid !== false) {
         this._beng.$wid = _beng$wid;
       }
 
@@ -215,6 +215,7 @@ var _bengala = (function() {
     },
   };
 
+  // return bengala;
   return Object.freeze(bengala);
 })();
 
