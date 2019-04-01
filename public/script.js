@@ -40,7 +40,6 @@ var _bengala = (function() {
         }
 
         if (data.uid != null && bengala.$uid == null) {
-          console.log(data.uid);
           bengala.setUserId(data.uid);
         }
       };
@@ -95,6 +94,8 @@ var _bengala = (function() {
 
   var bengala = {
     _beng: {
+      prefix: 'id-user-beng_',
+
       $wid: null,
       $uid: null,
       $pid: function() {
@@ -109,6 +110,7 @@ var _bengala = (function() {
       },
       checkUserId: function() {
         var cookies = document.cookie.split(';');
+        let exist = false;
 
         if (cookies.length > 0) {
           for (var i = cookies.length - 1; i >= 0; i--) {
@@ -117,19 +119,17 @@ var _bengala = (function() {
             if (cookie.length > 0) {
               var user = cookie[0].trim().split('_');
 
-              if (user[0] == this.prefix) {
-                this.setUserId(user[1]);
-                return true;
+              if (user[0] == this.prefix.substring(0, this.prefix.length - 1)) {
+                exist = true;
+                this.$uid = user[1];
               }
             }
           }
         }
 
-        return false;
+        return exist;
       }
     },
-
-    prefix: 'id-user-beng_',
 
     domain: 'bengala.crystalware.test',
     ports: {
