@@ -7,10 +7,15 @@ class BengalaUserPermission {
   /**
    *
    */
-  constructor() {
-    this.passive_mode = true; // Automatically read page and create collection if not present
-    this.permanent_cookie = false;
-    this.refresh_rate = 1000;
+  constructor(permission) {
+    // Automatically read page and create collection if not present
+    this.passive_mode = permission.passive_mode || true;
+
+    //
+    this.permanent_cookie = permission.permanent_cookie || false;
+
+    //
+    this.refresh_rate = permission.refresh_rate || 1000;
   }
 }
 

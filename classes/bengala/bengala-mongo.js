@@ -12,6 +12,8 @@ class BengalaMongo {
   constructor(configuration) {
     this.configuration = configuration;
     this.mongo = Mongo.MongoClient;
+
+    this.connection = null;
   }
 
   /**

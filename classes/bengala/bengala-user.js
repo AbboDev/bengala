@@ -13,7 +13,7 @@ class BengalaUser {
    */
   constructor(database, collection, identifier = null, prefix = 'beng-', permission = null) {
     this.database = database;
-    this.collection = collection;
+    this.collections = [collection];
     this.prefix = prefix;
     this.identifier = identifier || uniqid();
 
@@ -34,15 +34,24 @@ class BengalaUser {
   /**
    *
    */
-  getCollection() {
-    return `${this.getDatabase()}-${this.decryptPage() || ''}`;
+  getCollection(collection) {
+    return `${this.getDatabase()}-${this.decryptCollection(collection) || ''}`;
   }
 
   /**
    *
    */
-  decryptPage() {
-    return Buffer.from(decodeURIComponent(this.collection), 'base64').toString();
+  decryptCollection(collection) {
+    let decoded = decodeURIComponent(this.getCollectionByName(collection));
+
+    return Buffer.from(decoded, 'base64').toString();
+  }
+
+  /**
+   *
+   */
+  getCollectionByName(value) {
+    return this.collections[this.collections.indexOf(value)];
   }
 }
 

@@ -4,8 +4,9 @@
 'use strict';
 
 const WebSocket = require('ws');
+
 const BengalaMongo = require('./bengala-mongo');
-const BengalaUser = require('./bengala-user');
+const BengalaWebSocket = require('./bengala-socket');
 
 class Bengala {
   /**
@@ -14,9 +15,10 @@ class Bengala {
   constructor(configuration) {
     this.configuration = configuration;
 
+    // The server which handle the sockets requests
     this.server = new WebSocket.Server(this.configuration);
+
     this.mongo = null;
-    this.user = null;
   }
 
   /**
@@ -42,7 +44,7 @@ class Bengala {
       this.server.on('headers', this.onHeaders.bind(this));
       this.server.on('listening', this.onListening.bind(this));
     } else {
-      console.error('Storage must be setup first');
+      console.error('A storage must be setup first');
     }
   }
 
@@ -52,75 +54,14 @@ class Bengala {
   onConnection(ws, req) {
     console.info('Open new connection');
 
-    this.sendWebsiteID(ws);
-    ws.ip = this.getConnectionIP(req);
+    let bws = new BengalaWebSocket(ws, this.mongo);
 
-    ws.on('error', this.onError.bind(this));
-    ws.on('close', this.onClose.bind(this));
+    bws.ip = this.getConnectionIP(req);
 
-    ws.on('message', this.onMessage.bind(this));
-  }
+    bws.ws.on('error', bws.onError.bind(bws));
+    bws.ws.on('close', bws.onClose.bind(bws));
 
-  /**
-   *
-   */
-  parseMessage(message) {
-    try {
-      let parsed = JSON.parse(message);
-      return parsed;
-    } catch (error) {
-      throw new Error('Failed to convert message into JSON');
-    }
-  }
-
-  /**
-   *
-   */
-  onMessage(message) {
-    let parsed = this.parseMessage(message);
-
-    // console.info('Received: ', parsed);
-
-    if (typeof parsed.wid !== 'undefined'
-      && parsed.wid !== false
-      && parsed.wid !== null
-      && typeof parsed.pid !== 'undefined'
-      && parsed.pid !== false
-      && parsed.pid !== null
-    ) {
-      if (this.user === null) {
-        this.user = new BengalaUser(parsed.wid, parsed.pid);
-
-        this.mongo.getDatabasePermission(this.user.getDatabase())
-          .then((collection) => {
-            this.user.setPermission(collection);
-          })
-          .catch((error) => {
-            console.error(error);
-          });
-
-        this.mongo.getCollection(this.user.getDatabase(), this.user.getCollection())
-          .then((collection) => {
-            this.mongo.insertTimelog(collection, parsed);
-          })
-          .catch((error) => {
-            console.error(error);
-          });
-      }
-    }
-  }
-
-  /**
-   *
-   */
-  sendWebsiteID(ws) {
-    ws.send(JSON.stringify({uid: ws.id}), (error) => {
-      if (error == undefined) {
-        return;
-      } else {
-        console.error('Async error: ' + error);
-      }
-    });
+    bws.ws.on('message', bws.onMessage.bind(bws));
   }
 
   /**
@@ -137,25 +78,9 @@ class Bengala {
   /**
    *
    */
-  onClose() {
-    console.info('Connection closed');
-    return;
-  }
-
-  /**
-   *
-   */
-  onError(error) {
-    console.error('Found error: ', error);
-    return;
-  }
-
-  /**
-   *
-   */
   onHeaders(headers, request) {
     console.info('Headers: ', headers);
-    console.info('Request: ', request);
+    console.info('Request: ', typeof request);
     return;
   }
 
