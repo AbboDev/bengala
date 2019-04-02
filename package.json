@@ -11,7 +11,8 @@
   "scripts": {
     "start": "node ./app.js",
     "lint": "eslint --fix --cache app.js static-server.js classes/**",
-    "dev": "nodemon app.js --exec \"npm run lint && node\""
+    "dev": "nodemon app.js --exec \"npm run lint && node\"",
+    "mongo": "mongod --dbpath J:/mongo"
   },
   "dependencies": {
     "cookie-parser": "~1.4.3",
