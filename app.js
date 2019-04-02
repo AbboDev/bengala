@@ -53,7 +53,27 @@ const mongo_conf = {
 };
 
 const wss_conf = {
-  port: port
+  host: 'bengala.crystalware.test', // The hostname where to bind the server
+  port: port, // The port where to bind the server
+  // backlog: port, // The maximum length of the queue of pending connections
+  verifyClient: function(info) {
+    // console.log('req:', info.req);
+    // console.log('info:', info);
+    console.log('origin:', info.origin);
+    console.log('secure:', info.secure);
+    return true;
+  },
+  // handleProtocols: function(protocols, request) {
+  //   console.log('protocols', protocols);
+  //   let test = request;
+  //
+  //   return true;
+  // },
+  path: '/',
+  noServer: false, // Disable no server mode
+  clientTracking: true, // Specifies to track clients
+  // perMessageDeflate: true, // Enable permessage-deflate
+  // maxPayload: // The maximum allowed message size in bytes
 };
 
 let bengala = new Bengala(wss_conf);

@@ -39,10 +39,14 @@ class Bengala {
    */
   start() {
     if (this.mongo !== null) {
-      this.server.on('connection', this.onConnection.bind(this));
+      console.log(this.server.address());
 
-      this.server.on('headers', this.onHeaders.bind(this));
       this.server.on('listening', this.onListening.bind(this));
+      this.server.on('connection', this.onConnection.bind(this));
+      // this.server.on('headers', this.onHeaders.bind(this));
+
+      this.server.on('close', this.onClose.bind(this));
+      this.server.on('error', this.onError.bind(this));
     } else {
       console.error('A storage must be setup first');
     }
@@ -52,6 +56,8 @@ class Bengala {
    *
    */
   onConnection(ws, req) {
+    console.log(this.server.clients.size);
+    // console.log(this.server.clients);
     console.info('Open new connection');
 
     let bws = new BengalaWebSocket(ws, this.mongo);
@@ -89,6 +95,22 @@ class Bengala {
    */
   onListening() {
     console.error('Bind server');
+    return;
+  }
+
+  /**
+   *
+   */
+  onClose() {
+    console.info('Connection closed');
+    return;
+  }
+
+  /**
+   *
+   */
+  onError(error) {
+    console.error('Found error: ', error);
     return;
   }
 }

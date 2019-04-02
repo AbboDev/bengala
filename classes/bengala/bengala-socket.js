@@ -62,9 +62,9 @@ class BengalaWebSocket {
             this.user.getCollection(parsed.pid))
           )
           .then((collection) => {
-            console.log(parsed);
+            let message = this.removeKeys(parsed, ['wid', 'pid']);
 
-            this.storage.insertTimelog(collection, parsed);
+            this.storage.insertTimelog(collection, message);
           })
           .catch((error) => {
             console.error(error);
@@ -86,6 +86,19 @@ class BengalaWebSocket {
           reject(error);
         });
     });
+  }
+
+  removeKeys(object, keys) {
+    if (Array.isArray(keys)) {
+      let array_length = keys.length;
+      for (var i = array_length - 1; i >= 0; i--) {
+        delete object[keys[i]];
+      }
+    } else {
+      delete object[keys];
+    }
+
+    return object;
   }
 
   /**
