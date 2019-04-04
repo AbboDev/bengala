@@ -13,7 +13,15 @@ class BengalaMongo {
     this.configuration = configuration;
     this.mongo = Mongo.MongoClient;
 
-    this.connection = null;
+    /**
+     * @var contains all the current active client, group by db names
+     */
+    this.connections = {};
+
+    /**
+     * @var contains all the databases with relatives collections
+     */
+    this.databases = {};
   }
 
   /**
@@ -45,13 +53,13 @@ class BengalaMongo {
   /**
    *
    */
-  getCollection(database, collection) {
+  getCollection(database, collection, permission) {
     return new Promise((resolve, reject) => {
       this.getConnection(this.getPath(), database, {
         useNewUrlParser: true
       })
         .then((db) => this.checkDatabase(db, database))
-        .then((db) => this.checkCollection(db, collection))
+        .then((db) => this.checkCollection(db, collection, permission.passive_mode || false))
         .then((collection) => {
           resolve(collection);
         }).catch((error) => {
@@ -65,20 +73,34 @@ class BengalaMongo {
    */
   getConnection(path, database, configuration = {}) {
     return new Promise((resolve, reject) => {
-      this.mongo.connect(path, configuration)
-        .then((client) => {
-          let db = client.db(database);
+      // Avoid to recreate multiple connection to the same database
+      if (!(database in this.connections)) {
+        this.mongo.connect(path, configuration)
+          .then((client) => {
+            let db = client.db(database);
 
-          resolve(db);
-        })
-        .catch((error) => {
-          reject(error);
-        });
+            if (!(database in this.connections)) {
+              this.connections[database] = client;
+            }
+
+            resolve(db);
+          })
+          .catch((error) => {
+            reject(error);
+          });
+      } else {
+        let db = this.connections[database].db(database);
+        resolve(db);
+      }
     });
   }
 
   /**
+   * checkDatabase - description
    *
+   * @param  {type} db       description
+   * @param  {type} database description
+   * @return {type}          description
    */
   checkDatabase(db, database) {
     return new Promise((resolve, reject) => {
@@ -88,6 +110,10 @@ class BengalaMongo {
         }
 
         let db_exist = dbs.databases.some((db) => {
+          if (!(db.name in this.databases)) {
+            this.databases[db.name] = [];
+          }
+
           return db.name === database;
         });
 
@@ -101,26 +127,38 @@ class BengalaMongo {
   }
 
   /**
+   * checkCollection - description
    *
+   * @param  {type} db                      description
+   * @param  {type} collection              description
+   * @param  {boolean} createIfNotExist = true description
+   * @return {type}                         description
    */
   checkCollection(db, collection, createIfNotExist = true) {
     return new Promise((resolve, reject) => {
+      let databaseName = db.s.databaseName;
+
       db.listCollections().toArray((error, dbcs) => {
         if (error != undefined) {
           reject(error);
         }
 
         let dbc_exist = dbcs.some((dbc) => {
+          if (!this.databases[databaseName].includes(dbc.name)) {
+            this.databases[databaseName].push(dbc.name);
+
+            console.log(this.databases);
+          }
+
           return dbc.name === collection;
         });
 
         if (dbc_exist === false) {
-          if (createIfNotExist === true) {
+          if (createIfNotExist === true && !this.databases[databaseName].includes(collection)) {
+            this.databases[databaseName].push(collection);
             db.createCollection(collection, {})
               .catch((error) => {
-                console.error(error);
-
-                reject(new Error('Impossible to create collection: ' + collection));
+                console.info('info', error);
               });
           } else {
             reject(new Error('Collection not found: ' + collection));

@@ -35,15 +35,16 @@ class BengalaWebSocket {
     });
   }
 
+
   /**
+   * onMessage - description
    *
+   * @param  {type} message description
+   * @return {type}         description
    */
   onMessage(message) {
     let parsed = this.parseMessage(message);
-
     this.queue.add(parsed);
-
-    // console.info('Received: ', parsed);
 
     if (this.checkParams(parsed.wid) && this.checkParams(parsed.pid)) {
       if (this.user === null) { // First boot of user/socket
@@ -57,12 +58,18 @@ class BengalaWebSocket {
 
       if (this.checkParams(parsed.uid)) { // First boot of user/socket
         this.getPermission()
-          .then(() => this.storage.getCollection(
+          .then((permission) => this.storage.getCollection(
             this.user.getDatabase(),
-            this.user.getCollection(parsed.pid))
-          )
+            // Take not the current but the first of current queue
+            this.user.getCollection(this.queue.first().pid),
+            permission
+          ))
           .then((collection) => {
-            let message = this.removeKeys(parsed, ['wid', 'pid']);
+            // Use the first inserted item in the list
+            let item = this.queue.remove();
+            let message = this.removeKeys(item, ['wid', 'pid']);
+
+            // console.log(item);
 
             this.storage.insertTimelog(collection, message);
           })
@@ -80,7 +87,7 @@ class BengalaWebSocket {
           let permission = collection[0];
 
           this.user.setPermission(permission);
-          resolve();
+          resolve(permission);
         })
         .catch((error) => {
           reject(error);

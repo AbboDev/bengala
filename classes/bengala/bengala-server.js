@@ -57,7 +57,7 @@ class Bengala {
    */
   onConnection(ws, req) {
     console.log(this.server.clients.size);
-    // console.log(this.server.clients);
+
     console.info('Open new connection');
 
     let bws = new BengalaWebSocket(ws, this.mongo);
