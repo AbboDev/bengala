@@ -25,7 +25,14 @@ module.exports = [
     }
   },
   {
-    files: ['*.js', '*.config.js', 'commitlint.config.js', 'eslint.config.js'],
+    files: [
+      '*.js',
+      '*.config.js',
+      '*.config.mts',
+      '*.config.ts',
+      'commitlint.config.js',
+      'eslint.config.js'
+    ],
     rules: {
       '@typescript-eslint/no-require-imports': 'off'
     }
@@ -46,6 +53,6 @@ module.exports = [
     }
   },
   {
-    ignores: ['node_modules/', 'dist/']
+    ignores: ['node_modules/', 'dist/', 'public/']
   }
 ];

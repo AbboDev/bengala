@@ -11,9 +11,12 @@
   },
   "packageManager": "pnpm@12.18.0",
   "scripts": {
-    "build": "tsc",
+    "build": "pnpm build:server && pnpm build:client",
+    "build:server": "tsc",
+    "build:client": "vite build && cp dist/client/script.js public/script.js",
     "start": "node --env-file-if-exists=.env dist/app.js",
     "dev": "tsx watch --env-file-if-exists=.env src/app.ts",
+    "dev:client": "vite",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --fix src/",
     "lint:check": "eslint src/",
@@ -47,7 +50,8 @@
     "prettier": "^3.10.1",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.72.2"
+    "typescript-eslint": "^8.72.2",
+    "vite": "^8.3.8"
   },
   "engines": {
     "node": ">=26",

@@ -105,6 +105,8 @@ The server strips routing metadata (`wid`, `pid`) and inserts the timelog `{ ts:
 │   ├── static-server.ts            # Standalone HTTP static file server for public/ assets
 │   ├── index.ts                    # Primary module exports & types
 │   ├── types.ts                    # TypeScript interfaces & configuration types
+│   ├── client/
+│   │   └── tracker.ts              # Client tracking library (built with Vite)
 │   ├── bengala/
 │   │   ├── bengala-server.ts       # WebSocket server lifecycle (ws listener, IP detection)
 │   │   ├── bengala-socket.ts       # Socket connection handler, message queue, UID assignment
@@ -113,13 +115,14 @@ The server strips routing metadata (`wid`, `pid`) and inserts the timelog `{ ts:
 │   │   └── bengala-user-permission.ts # Tenant permission model (passive_mode, refresh_rate)
 │   └── utilities/
 │       └── queue.ts                # Generic in-memory FIFO queue for sequential event processing
-├── dist/                           # Compiled JavaScript and TypeScript declaration files (.d.ts)
+├── dist/                           # Compiled server outputs (tsc) and client bundles (vite)
 ├── public/                         # Client-side demo & integration scripts
 │   ├── index.html                  # Sample web page demonstrating tracker activation
 │   ├── test.html                   # Secondary test page for multi-page tracking
 │   └── script.js                   # Client-side tracking script (embeddable on external sites)
 ├── package.json                    # Project metadata, dependencies, scripts, engines
 ├── tsconfig.json                   # TypeScript compiler options
+├── vite.config.mts                 # Vite configuration for building and serving client assets
 ├── pnpm-lock.yaml                  # pnpm lockfile
 ├── pnpm-workspace.yaml             # pnpm workspace & build approval settings
 ├── eslint.config.js                # ESLint configuration (Flat config with typescript-eslint)
@@ -183,15 +186,22 @@ pnpm install
 ### 3. Build the Project
 
 ```bash
+# Build both server (tsc) and client bundle (Vite)
 pnpm run build
-```
 
-This compiles TypeScript source from `src/` into JavaScript and declaration types in `dist/`.
+# Or build individually:
+pnpm run build:server   # Compiles TypeScript backend into dist/
+pnpm run build:client   # Bundles client tracker with Vite into dist/client/
+```
 
 ### 4. Run Development Server
 
 ```bash
+# Start backend server with tsx watch
 pnpm run dev
+
+# Or start Vite client dev server
+pnpm run dev:client
 ```
 
 Uses `tsx watch` to start with hot-reloading:

@@ -1,244 +1,114 @@
-/**
- * _beng$wid: website ID
- * _beng$uid: user ID / server socket ID
- * _beng$pid: page ID
- */
-var _bengala = (function () {
-  'use strict';
-
-  var _protected = {
-    create: function (uri) {
-      if (window.WebSocket) {
-        try {
-          return new WebSocket(uri);
-        } catch (error) {
-          console.error('Failed to open WebSocket:', error);
-          return false;
-        }
-      } else {
-        console.warn('WebSocket not supported');
-        return false;
-      }
-    },
-
-    errorHandler: function (error) {
-      console.error('WebSocket error: ', error);
-    },
-
-    closeHandler: function () {
-      console.info('WebSocket is closed');
-    },
-
-    connect: function (ws, clock, bengala) {
-      ws.onmessage = function (message) {
-        var data;
-
-        try {
-          data = JSON.parse(message.data);
-        } catch (e) {
-          return;
-        }
-
-        if (data.uid != null && bengala.$uid == null) {
-          bengala.setUserId(data.uid);
-        }
-      };
-
-      ws.onerror = this.errorHandler;
-      ws.onclose = this.closeHandler;
-
-      ws.onopen = function () {
-        console.info('WebSocket is connected');
-
-        var init = {
-          ts: Date.now(),
-          wid: bengala.$wid,
-          pid: bengala.$pid()
-        };
-
-        if (bengala.checkUserId()) {
-          init.uid = bengala.$uid;
-        }
-
-        ws.send(JSON.stringify(init), function (error) {
-          if (error == undefined) {
-            return;
-          } else {
-            console.error('Async error: ' + error);
+var _bengala = (function (e) {
+  Object.defineProperties(e, {
+    __esModule: { value: !0 },
+    [Symbol.toStringTag]: { value: `Module` }
+  });
+  var t = () => {
+    let e = {
+        prefix: `id-user-beng_`,
+        $wid: null,
+        $uid: null,
+        $pid: () => {
+          let e = typeof window < `u` ? window.location.pathname : `/`;
+          return encodeURIComponent(btoa(e));
+        },
+        setUserId: function (e) {
+          if (((this.$uid = e), typeof document < `u`)) {
+            let e = new Date();
+            e.setTime(e.getTime() + 36e5);
+            let t = `expires=` + e.toUTCString();
+            document.cookie = `${this.prefix}${this.$uid}=${this.$pid()}; expires=${t}; path=/`;
           }
-        });
-      };
-
-      var int = setInterval(function () {
-        var heart_beat = {
-          ts: Date.now(),
-          wid: bengala.$wid,
-          uid: bengala.$uid,
-          pid: bengala.$pid()
-        };
-
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify(heart_beat), function (error) {
-            if (error == undefined) {
-              return;
-            } else {
-              console.error('Async error: ' + error);
-            }
-          });
-        } else {
-          clearInterval(int);
-        }
-      }, clock);
-    }
-  };
-
-  var bengala = {
-    _beng: {
-      prefix: 'id-user-beng_',
-
-      $wid: null,
-      $uid: null,
-      $pid: function () {
-        return encodeURIComponent(btoa(window.location.pathname));
-      },
-      setUserId: function (uid) {
-        this.$uid = uid;
-        var d = new Date();
-        d.setTime(d.getTime() + 60 * 60 * 1000);
-        var expires = 'expires=' + d.toUTCString();
-        document.cookie =
-          this.prefix +
-          this.$uid +
-          '=' +
-          this.$pid() +
-          '; expires=' +
-          expires +
-          '; path=/';
-      },
-      checkUserId: function () {
-        var cookies = document.cookie.split(';');
-        let exist = false;
-
-        if (cookies.length > 0) {
-          for (var i = cookies.length - 1; i >= 0; i--) {
-            var cookie = cookies[i].trim().split('=');
-
-            if (cookie.length > 0) {
-              var user = cookie[0].trim().split('_');
-
-              if (user[0] == this.prefix.substring(0, this.prefix.length - 1)) {
-                exist = true;
-                this.$uid = user[1];
-              }
+        },
+        checkUserId: function () {
+          if (typeof document > `u`) return !1;
+          let e = document.cookie.split(`;`),
+            t = !1;
+          for (let n = e.length - 1; n >= 0; n--) {
+            let r = e[n].trim().split(`=`);
+            if (r.length > 0) {
+              let e = r[0].trim().split(`_`),
+                n = this.prefix.substring(0, this.prefix.length - 1);
+              e[0] === n && e[1] && ((t = !0), (this.$uid = e[1]));
             }
           }
+          return t;
         }
-
-        return exist;
-      }
-    },
-
-    domain: 'bengala.crystalware.test',
-    ports: {
-      ws: 9080,
-      wss: 9443
-    },
-
-    getPath: function (secure = false) {
-      var protocols = (function (object) {
-        if (!Object.keys) {
-          Object.keys = (function () {
-            'use strict';
-            var hasOwnProperty = Object.prototype.hasOwnProperty,
-              hasDontEnumBug = !{ toString: null }.propertyIsEnumerable(
-                'toString'
-              ),
-              dontEnums = [
-                'toString',
-                'toLocaleString',
-                'valueOf',
-                'hasOwnProperty',
-                'isPrototypeOf',
-                'propertyIsEnumerable',
-                'constructor'
-              ],
-              dontEnumsLength = dontEnums.length;
-
-            return function (obj) {
+      },
+      t = {
+        domain:
+          typeof window < `u` &&
+          window.location.hostname &&
+          window.location.hostname !== ``
+            ? window.location.hostname
+            : `localhost`,
+        ports: { ws: 9080, wss: 9443 },
+        clockRate: 1e3,
+        version: () => `0.0.2`,
+        getPath: function (e = !1) {
+          let t = typeof window < `u` && window.location.protocol === `https:`,
+            n = e || t,
+            r = n ? `wss` : `ws`,
+            i = n ? this.ports.wss : this.ports.ws;
+          return `${r}://${this.domain}:${i}`;
+        },
+        init: function () {
+          let t = (t) => {
+              ((t.onmessage = (t) => {
+                try {
+                  let n = JSON.parse(t.data);
+                  n.uid != null && e.$uid == null && e.setUserId(n.uid);
+                } catch {}
+              }),
+                (t.onerror = (e) => {
+                  console.error(`Bengala WebSocket error:`, e);
+                }),
+                (t.onclose = () => {
+                  console.info(`Bengala WebSocket connection closed`);
+                }),
+                (t.onopen = () => {
+                  console.info(`Bengala WebSocket connection established`);
+                  let n = { ts: Date.now(), wid: e.$wid, pid: e.$pid() };
+                  (e.checkUserId() && e.$uid && (n.uid = e.$uid),
+                    t.send(JSON.stringify(n)));
+                }));
+              let n = setInterval(() => {
+                if (t.readyState === WebSocket.OPEN) {
+                  let n = {
+                    ts: Date.now(),
+                    wid: e.$wid,
+                    uid: e.$uid,
+                    pid: e.$pid()
+                  };
+                  t.send(JSON.stringify(n));
+                } else clearInterval(n);
+              }, this.clockRate);
+            },
+            n = () => {
               if (
-                typeof obj !== 'object' &&
-                (typeof obj !== 'function' || obj === null)
-              ) {
-                throw new TypeError('Object.keys called on non-object');
-              }
-
-              var result = [],
-                prop,
-                i;
-
-              for (prop in obj) {
-                if (hasOwnProperty.call(obj, prop)) {
-                  result.push(prop);
+                (typeof window < `u` &&
+                  window._beng$wid !== void 0 &&
+                  window._beng$wid !== null &&
+                  window._beng$wid !== `` &&
+                  (e.$wid = window._beng$wid),
+                e.$wid !== null)
+              )
+                try {
+                  let e = new WebSocket(this.getPath());
+                  t(e);
+                } catch (e) {
+                  console.error(`Failed to open Bengala WebSocket:`, e);
                 }
-              }
-
-              if (hasDontEnumBug) {
-                for (i = 0; i < dontEnumsLength; i++) {
-                  if (hasOwnProperty.call(obj, dontEnums[i])) {
-                    result.push(dontEnums[i]);
-                  }
-                }
-              }
-              return result;
+              else setTimeout(n, 250);
             };
-          })();
+          n();
         }
-
-        return Object.keys(object);
-      })(this.ports);
-
-      return (
-        (!secure ? protocols[0] : protocols[1]) +
-        '://' +
-        this.domain +
-        ':' +
-        (!secure ? this.ports['ws'] : this.ports['wss'])
-      );
-    },
-
-    clockRate: 1000,
-
-    v: function () {
-      return '0.0.1';
-    },
-
-    init: function () {
-      this.wait();
-    },
-
-    wait: function () {
-      if (
-        typeof _beng$wid !== 'undefined' &&
-        _beng$wid !== null &&
-        _beng$wid !== false
-      ) {
-        this._beng.$wid = _beng$wid;
-      }
-
-      if (this._beng.$wid !== null) {
-        var ws = _protected.create(this.getPath());
-
-        if (ws != false) {
-          _protected.connect(ws, this.clockRate, this._beng);
-        }
-      } else {
-        setTimeout(this.wait.bind(this), 250);
-      }
-    }
+      };
+    return Object.freeze(t);
   };
-
-  // return bengala;
-  return Object.freeze(bengala);
-})();
-
-_bengala.init();
+  if (typeof window < `u`) {
+    let e = t();
+    ((window._bengala = e), e.init());
+  }
+  return ((e.createTracker = t), (e.default = t), e);
+})({});
