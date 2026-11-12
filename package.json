@@ -8,12 +8,13 @@
     "email": "thomas.abbondi@crystalware.cloud",
     "url": "https://www.crystalware.cloud"
   },
+  "packageManager": "pnpm@12.18.0",
   "scripts": {
     "start": "node ./app.js",
     "lint": "eslint --fix --cache app.js static-server.js classes/**",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "dev": "nodemon app.js --exec \"npm run lint && node\"",
+    "dev": "nodemon app.js --exec \"pnpm lint && node\"",
     "mongo": "mongod --dbpath J:/mongo",
     "prepare": "husky"
   },
@@ -42,6 +43,7 @@
     "prettier": "^3.10.1"
   },
   "engines": {
-    "node": ">=24"
+    "node": ">=24",
+    "pnpm": ">=10"
   }
 }
