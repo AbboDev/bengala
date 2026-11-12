@@ -1,12 +1,38 @@
-'use strict';
+import {
+  MongoClient,
+  Db,
+  Collection,
+  Document,
+  Filter,
+  InsertOneResult,
+  InsertManyResult,
+  MongoClientOptions
+} from 'mongodb';
+import type { MongoConfiguration, UserPermissionConfig } from '../types';
 
-const { MongoClient } = require('mongodb');
+export class BengalaMongo {
+  public configuration: MongoConfiguration;
+  public uri: string;
+  public protocol: string;
+  public port: number;
+  public user: string | null;
+  public password: string | null;
+  public options: string | Record<string, string> | null;
+  public prefix: string;
 
-class BengalaMongo {
-  constructor(configuration = {}) {
+  /**
+   * Map of shared MongoClient instances indexed by connection URI
+   */
+  public clients: Record<string, MongoClient>;
+
+  /**
+   * Cache of known databases and collections
+   */
+  public databases: Record<string, string[]>;
+
+  constructor(configuration: MongoConfiguration = {}) {
     this.configuration = configuration;
 
-    // Full URI support (e.g. mongodb+srv://... or mongodb://...)
     this.uri =
       configuration.uri ||
       configuration.domain ||
@@ -15,24 +41,16 @@ class BengalaMongo {
       'localhost';
     this.protocol = configuration.protocol || 'mongodb';
     this.port = configuration.port || 27017;
-    this.user = configuration.user || configuration.username || null;
+    this.user = configuration.user || null;
     this.password = configuration.password || null;
     this.options = configuration.options || null;
     this.prefix = configuration.prefix || 'beng-';
 
-    /**
-     * Map of shared MongoClient instances indexed by connection URI
-     */
     this.clients = {};
-
-    /**
-     * Cache of known databases and collections
-     */
     this.databases = {};
   }
 
-  getPath() {
-    // If a full URI is already provided (e.g. mongodb+srv://... or mongodb://...)
+  getPath(): string {
     if (
       typeof this.uri === 'string' &&
       (this.uri.startsWith('mongodb://') ||
@@ -66,7 +84,10 @@ class BengalaMongo {
     return url;
   }
 
-  async getClient(path, configuration = {}) {
+  async getClient(
+    path: string,
+    configuration: MongoClientOptions = {}
+  ): Promise<MongoClient> {
     if (!this.clients[path]) {
       const client = new MongoClient(path, {
         serverSelectionTimeoutMS: 10000,
@@ -79,12 +100,16 @@ class BengalaMongo {
     return this.clients[path];
   }
 
-  async getConnection(path, database, configuration = {}) {
+  async getConnection(
+    path: string,
+    database: string,
+    configuration: MongoClientOptions = {}
+  ): Promise<Db> {
     const client = await this.getClient(path, configuration);
     return client.db(database);
   }
 
-  async getDatabasePermission(database) {
+  async getDatabasePermission(database: string): Promise<Document[]> {
     const db = await this.getConnection(this.getPath(), database);
     await this.checkDatabase(db, database);
     try {
@@ -95,7 +120,11 @@ class BengalaMongo {
     }
   }
 
-  async getCollection(database, collection, permission = {}) {
+  async getCollection(
+    database: string,
+    collection: string,
+    permission: UserPermissionConfig = {}
+  ): Promise<Collection<Document>> {
     const db = await this.getConnection(this.getPath(), database);
     await this.checkDatabase(db, database);
     const passiveMode =
@@ -103,7 +132,7 @@ class BengalaMongo {
     return await this.checkCollection(db, collection, passiveMode);
   }
 
-  async checkDatabase(db, database) {
+  async checkDatabase(db: Db, database: string): Promise<Db> {
     try {
       const adminDb = db.admin();
       const dbs = await adminDb.listDatabases();
@@ -118,19 +147,22 @@ class BengalaMongo {
       if (!dbExists) {
         this.databases[database] = this.databases[database] || [];
       }
-    } catch (err) {
-      // In Atlas, regular database users often lack cluster-wide listDatabases permission.
-      // Register locally and proceed with lazy collection provisioning.
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
       this.databases[database] = this.databases[database] || [];
       console.info(
-        `Notice: listDatabases check bypassed (${err.message}) - targeting "${database}"`
+        `Notice: listDatabases check bypassed (${message}) - targeting "${database}"`
       );
     }
 
     return db;
   }
 
-  async checkCollection(db, collection, createIfNotExist = true) {
+  async checkCollection(
+    db: Db,
+    collection: string,
+    createIfNotExist = true
+  ): Promise<Collection<Document>> {
     const databaseName = db.databaseName;
     if (!this.databases[databaseName]) {
       this.databases[databaseName] = [];
@@ -159,7 +191,12 @@ class BengalaMongo {
     return db.collection(collection);
   }
 
-  async insertTimelog(collection, data) {
+  async insertTimelog(
+    collection: Collection<Document>,
+    data: Document | Document[]
+  ): Promise<
+    InsertOneResult<Document> | InsertManyResult<Document> | undefined
+  > {
     if (Array.isArray(data)) {
       const tsSet = data.every(
         (doc) => doc.ts !== null && doc.ts !== undefined
@@ -174,11 +211,14 @@ class BengalaMongo {
     }
   }
 
-  async getDocuments(collection, filter = {}) {
+  async getDocuments(
+    collection: Collection<Document>,
+    filter: Filter<Document> = {}
+  ): Promise<Document[]> {
     return await collection.find(filter).toArray();
   }
 
-  async close() {
+  async close(): Promise<void> {
     for (const path of Object.keys(this.clients)) {
       try {
         await this.clients[path].close();
@@ -190,4 +230,4 @@ class BengalaMongo {
   }
 }
 
-module.exports = BengalaMongo;
+export default BengalaMongo;

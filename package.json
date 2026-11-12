@@ -2,7 +2,8 @@
   "name": "bengala",
   "version": "0.0.2",
   "description": "Real-time web analytics and user presence tracking engine",
-  "main": "app.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "author": {
     "name": "Thomas Abbondi",
     "email": "thomas.abbondi@crystalware.cloud",
@@ -10,13 +11,15 @@
   },
   "packageManager": "pnpm@12.18.0",
   "scripts": {
-    "start": "node --env-file-if-exists=.env ./app.js",
-    "dev": "nodemon --env-file-if-exists=.env app.js --exec \"pnpm lint && node\"",
-    "lint": "eslint --fix app.js static-server.js classes/",
-    "lint:check": "eslint app.js static-server.js classes/",
+    "build": "tsc",
+    "start": "node --env-file-if-exists=.env dist/app.js",
+    "dev": "tsx watch --env-file-if-exists=.env src/app.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint --fix src/",
+    "lint:check": "eslint src/",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "pnpm lint:check && pnpm format:check",
+    "test": "pnpm typecheck && pnpm lint:check && pnpm format:check",
     "mongo": "mongod --dbpath ./data/db",
     "prepare": "husky"
   },
@@ -26,21 +29,25 @@
     "ws": "^8.22.2"
   },
   "files": [
-    "app.js",
-    "static-server.js",
-    "classes/**/*.js",
+    "dist/**/*",
     "public/**/*"
   ],
   "devDependencies": {
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.4",
     "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.6",
+    "@types/uniqid": "^5.3.4",
+    "@types/ws": "^8.18.2",
     "eslint": "^10.14.0",
     "globals": "^17.14.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",
     "nodemon": "^3.1.14",
-    "prettier": "^3.10.1"
+    "prettier": "^3.10.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.2"
   },
   "engines": {
     "node": ">=26",

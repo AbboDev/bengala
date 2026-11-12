@@ -39,6 +39,7 @@ Thumbs.db
 .eslintcache
 /nbproject/private/
 /node_modules/
+dist/
 .vscode/
 
 # Environment variables

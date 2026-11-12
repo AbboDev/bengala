@@ -1,12 +1,14 @@
 const js = require('@eslint/js');
 const globals = require('globals');
+const tsPlugin = require('typescript-eslint');
 
 module.exports = [
   js.configs.recommended,
+  ...tsPlugin.configs.recommended,
   {
     languageOptions: {
       ecmaVersion: 'latest',
-      sourceType: 'commonjs',
+      sourceType: 'module',
       globals: {
         ...globals.browser,
         ...globals.node,
@@ -15,10 +17,17 @@ module.exports = [
     },
     rules: {
       'no-console': 'off',
-      indent: ['error', 2],
-      'linebreak-style': ['error', 'unix'],
-      quotes: ['error', 'single'],
-      semi: ['error', 'always']
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_' }
+      ]
+    }
+  },
+  {
+    files: ['*.js', '*.config.js', 'commitlint.config.js', 'eslint.config.js'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off'
     }
   },
   {
@@ -32,10 +41,11 @@ module.exports = [
     rules: {
       'no-prototype-builtins': 'off',
       'no-unused-vars': 'off',
-      'no-var': 'off'
+      'no-var': 'off',
+      '@typescript-eslint/no-require-imports': 'off'
     }
   },
   {
-    ignores: ['node_modules/']
+    ignores: ['node_modules/', 'dist/']
   }
 ];

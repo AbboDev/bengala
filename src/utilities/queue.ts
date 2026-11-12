@@ -1,50 +1,29 @@
-/**
- *
- */
-'use strict';
+export class Queue<T = unknown> {
+  private data: T[];
 
-class Queue {
-  /**
-   *
-   */
   constructor() {
     this.data = [];
   }
 
-  /**
-   *
-   */
-  add(record) {
+  add(record: T): void {
     this.data.unshift(record);
   }
 
-  /**
-   *
-   */
-  remove() {
+  remove(): T | undefined {
     return this.data.pop();
   }
 
-  /**
-   *
-   */
-  first() {
+  first(): T | undefined {
     return this.data[0];
   }
 
-  /**
-   *
-   */
-  last() {
+  last(): T | undefined {
     return this.data[this.data.length - 1];
   }
 
-  /**
-   *
-   */
-  size() {
+  size(): number {
     return this.data.length;
   }
 }
 
-module.exports = Queue;
+export default Queue;

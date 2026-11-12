@@ -100,26 +100,29 @@ The server strips routing metadata (`wid`, `pid`) and inserts the timelog `{ ts:
 ## Project Structure
 
 ```text
-├── app.js                          # Main application entry point (WebSocket server + static server)
-├── static-server.js                # Standalone HTTP static file server for public/ assets
-├── classes/
-│   ├── bengala.js                  # Primary export module combining server & storage
+├── src/                            # TypeScript source files
+│   ├── app.ts                      # Main application entry point (WebSocket server + static server)
+│   ├── static-server.ts            # Standalone HTTP static file server for public/ assets
+│   ├── index.ts                    # Primary module exports & types
+│   ├── types.ts                    # TypeScript interfaces & configuration types
 │   ├── bengala/
-│   │   ├── bengala-server.js       # WebSocket server lifecycle (ws listener, IP detection)
-│   │   ├── bengala-socket.js       # Socket connection handler, message queue, UID assignment
-│   │   ├── bengala-mongo.js        # MongoDB connection pooling, collection routing & timelogs
-│   │   ├── bengala-user.js         # User model, database/collection name resolution
-│   │   └── bengala-user-permission.js # Tenant permission model (passive_mode, refresh_rate)
+│   │   ├── bengala-server.ts       # WebSocket server lifecycle (ws listener, IP detection)
+│   │   ├── bengala-socket.ts       # Socket connection handler, message queue, UID assignment
+│   │   ├── bengala-mongo.ts        # MongoDB connection pooling, collection routing & timelogs
+│   │   ├── bengala-user.ts         # User model, database/collection name resolution
+│   │   └── bengala-user-permission.ts # Tenant permission model (passive_mode, refresh_rate)
 │   └── utilities/
-│       └── queue.js                # In-memory FIFO queue for sequential event processing
+│       └── queue.ts                # Generic in-memory FIFO queue for sequential event processing
+├── dist/                           # Compiled JavaScript and TypeScript declaration files (.d.ts)
 ├── public/                         # Client-side demo & integration scripts
 │   ├── index.html                  # Sample web page demonstrating tracker activation
 │   ├── test.html                   # Secondary test page for multi-page tracking
 │   └── script.js                   # Client-side tracking script (embeddable on external sites)
 ├── package.json                    # Project metadata, dependencies, scripts, engines
+├── tsconfig.json                   # TypeScript compiler options
 ├── pnpm-lock.yaml                  # pnpm lockfile
 ├── pnpm-workspace.yaml             # pnpm workspace & build approval settings
-├── eslint.config.js                # ESLint configuration (Flat config)
+├── eslint.config.js                # ESLint configuration (Flat config with typescript-eslint)
 └── commitlint.config.js            # Conventional commit validation rules
 ```
 
@@ -177,20 +180,29 @@ pnpm install
   # Or: mongod --dbpath /path/to/data/db
   ```
 
-### 3. Run Development Server
+### 3. Build the Project
+
+```bash
+pnpm run build
+```
+
+This compiles TypeScript source from `src/` into JavaScript and declaration types in `dist/`.
+
+### 4. Run Development Server
 
 ```bash
 pnpm run dev
 ```
 
-This starts:
+Uses `tsx watch` to start with hot-reloading:
 
 - The **WebSocket server** on port `9080` (or `PORT` environment variable).
 - The **Static file server** on port `3000`.
 
-### 4. Run Production Server
+### 5. Run Production Server
 
 ```bash
+pnpm run build
 pnpm start
 ```
 
@@ -214,14 +226,23 @@ To track a web page, include the `script.js` client tracker and declare your web
 
 ## Code Quality & Tooling
 
+- **Type Checking**:
+  ```bash
+  pnpm run typecheck
+  ```
 - **Linting**:
   ```bash
   pnpm run lint
+  pnpm run lint:check
   ```
 - **Code Formatting**:
   ```bash
   pnpm run format
   pnpm run format:check
+  ```
+- **Full Test Suite**:
+  ```bash
+  pnpm test
   ```
 - **Git Hooks**:
   - `pre-commit`: Automatically runs `lint-staged` (ESLint `--fix` and Prettier `--write`).

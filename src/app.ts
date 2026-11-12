@@ -1,37 +1,30 @@
 #!/usr/bin/env node
 
-'use strict';
-
-require('./static-server');
+import './static-server';
+import Bengala from './bengala/bengala-server';
+import BengalaMongo from './bengala/bengala-mongo';
+import type { BengalaServerConfiguration, MongoConfiguration } from './types';
 
 /**
  * Get port from environment
  */
-const port = normalizePort(process.env.PORT || '9080');
+function normalizePort(val: string | number): number | string | false {
+  const parsedPort = parseInt(String(val), 10);
 
-function normalizePort(val) {
-  const port = parseInt(val, 10);
-
-  if (isNaN(port)) {
-    // named pipe
+  if (isNaN(parsedPort)) {
     return val;
   }
 
-  if (port >= 0) {
-    // port number
-    return port;
+  if (parsedPort >= 0) {
+    return parsedPort;
   }
 
   return false;
 }
 
-/**
- * Create new Bengala Server
- */
-const Bengala = require('./classes/bengala');
+const port = normalizePort(process.env.PORT || '9080');
 
-const mongoConf = {
-  // Direct connection string for MongoDB Atlas or standalone URI
+const mongoConf: MongoConfiguration = {
   uri: process.env.MONGODB_URI || process.env.MONGO_URI,
   port: parseInt(process.env.MONGO_PORT || '27017', 10),
   protocol: process.env.MONGO_PROTOCOL || 'mongodb',
@@ -42,10 +35,10 @@ const mongoConf = {
   prefix: process.env.MONGO_PREFIX || 'beng-'
 };
 
-const wssConf = {
+const wssConf: BengalaServerConfiguration = {
   host: process.env.HOST || 'localhost',
-  port: port,
-  verifyClient: function (info) {
+  port: typeof port === 'number' ? port : parseInt(String(port), 10),
+  verifyClient: (info: { origin: string; secure: boolean }) => {
     console.log('origin:', info.origin);
     console.log('secure:', info.secure);
     return true;
@@ -56,15 +49,16 @@ const wssConf = {
 };
 
 const bengala = new Bengala(wssConf);
-const bengalaMongo = new Bengala.Mongo(mongoConf);
+const bengalaMongo = new BengalaMongo(mongoConf);
 
 bengala.setupMongo(bengalaMongo);
 bengala.start();
 
 // Graceful shutdown
-const handleShutdown = async (signal) => {
+const handleShutdown = async (signal: string): Promise<void> => {
   console.info(`Received ${signal}. Shutting down Bengala...`);
   try {
+    await bengala.close();
     await bengalaMongo.close();
   } catch (err) {
     console.error('Error during shutdown:', err);
@@ -72,5 +66,9 @@ const handleShutdown = async (signal) => {
   process.exit(0);
 };
 
-process.on('SIGINT', () => handleShutdown('SIGINT'));
-process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+process.on('SIGINT', () => {
+  void handleShutdown('SIGINT');
+});
+process.on('SIGTERM', () => {
+  void handleShutdown('SIGTERM');
+});
