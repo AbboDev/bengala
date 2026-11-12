@@ -1,24 +1,20 @@
 #!/usr/bin/env node
 
-import './static-server';
-import Bengala from './bengala/bengala-server';
-import BengalaMongo from './bengala/bengala-mongo';
-import type { BengalaServerConfiguration, MongoConfiguration } from './types';
+import {
+  BengalaMongo,
+  type BengalaServerConfiguration,
+  type MongoConfiguration
+} from '@bengala/shared';
+import BengalaServer from './server';
 
-/**
- * Get port from environment
- */
 function normalizePort(val: string | number): number | string | false {
   const parsedPort = parseInt(String(val), 10);
-
   if (isNaN(parsedPort)) {
     return val;
   }
-
   if (parsedPort >= 0) {
     return parsedPort;
   }
-
   return false;
 }
 
@@ -36,7 +32,7 @@ const mongoConf: MongoConfiguration = {
 };
 
 const wssConf: BengalaServerConfiguration = {
-  host: process.env.HOST || 'localhost',
+  host: process.env.HOST || '0.0.0.0',
   port: typeof port === 'number' ? port : parseInt(String(port), 10),
   verifyClient: (info: { origin: string; secure: boolean }) => {
     console.log('origin:', info.origin);
@@ -48,17 +44,17 @@ const wssConf: BengalaServerConfiguration = {
   clientTracking: true
 };
 
-const bengala = new Bengala(wssConf);
+const bengalaServer = new BengalaServer(wssConf);
 const bengalaMongo = new BengalaMongo(mongoConf);
 
-bengala.setupMongo(bengalaMongo);
-bengala.start();
+bengalaServer.setupMongo(bengalaMongo);
+bengalaServer.start();
 
 // Graceful shutdown
 const handleShutdown = async (signal: string): Promise<void> => {
-  console.info(`Received ${signal}. Shutting down Bengala...`);
+  console.info(`Received ${signal}. Shutting down Bengala WebSocket server...`);
   try {
-    await bengala.close();
+    await bengalaServer.close();
     await bengalaMongo.close();
   } catch (err) {
     console.error('Error during shutdown:', err);

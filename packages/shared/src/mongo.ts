@@ -8,7 +8,7 @@ import {
   InsertManyResult,
   MongoClientOptions
 } from 'mongodb';
-import type { MongoConfiguration, UserPermissionConfig } from '../types';
+import type { MongoConfiguration, UserPermissionConfig } from './types';
 
 export class BengalaMongo {
   public configuration: MongoConfiguration;

@@ -1,6 +1,6 @@
 import uniqid from 'uniqid';
-import BengalaUserPermission from './bengala-user-permission';
-import type { UserPermissionConfig } from '../types';
+import BengalaUserPermission from './permission';
+import type { UserPermissionConfig } from './types';
 
 export class BengalaUser {
   public database: string;

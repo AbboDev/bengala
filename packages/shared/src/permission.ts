@@ -1,4 +1,4 @@
-import type { UserPermissionConfig } from '../types';
+import type { UserPermissionConfig } from './types';
 
 export class BengalaUserPermission {
   public passive_mode: boolean;

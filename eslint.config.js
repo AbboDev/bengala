@@ -27,9 +27,9 @@ module.exports = [
   {
     files: [
       '*.js',
-      '*.config.js',
-      '*.config.mts',
-      '*.config.ts',
+      '**/*.config.js',
+      '**/*.config.mts',
+      '**/*.config.ts',
       'commitlint.config.js',
       'eslint.config.js'
     ],
@@ -38,21 +38,12 @@ module.exports = [
     }
   },
   {
-    files: ['public/**/*.js'],
-    languageOptions: {
-      globals: {
-        ...globals.browser,
-        _beng$wid: 'readonly'
-      }
-    },
-    rules: {
-      'no-prototype-builtins': 'off',
-      'no-unused-vars': 'off',
-      'no-var': 'off',
-      '@typescript-eslint/no-require-imports': 'off'
-    }
-  },
-  {
-    ignores: ['node_modules/', 'dist/', 'public/']
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/public/**',
+      '.husky/**',
+      '.vscode/**'
+    ]
   }
 ];

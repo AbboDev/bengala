@@ -1,8 +1,11 @@
 import type { WebSocket, RawData } from 'ws';
-import BengalaUser from './bengala-user';
-import type BengalaMongo from './bengala-mongo';
-import Queue from '../utilities/queue';
-import type { BengalaIncomingMessage, UserPermissionConfig } from '../types';
+import {
+  BengalaUser,
+  BengalaMongo,
+  Queue,
+  type BengalaIncomingMessage,
+  type UserPermissionConfig
+} from '@bengala/shared';
 
 export class BengalaWebSocket {
   public ws: WebSocket;

@@ -1,240 +1,288 @@
 # Bengala
 
-Bengala is a lightweight, real-time web analytics and user presence tracking engine built with **Node.js**, **WebSockets**, and **MongoDB**.
+Bengala is a real-time web analytics and user presence tracking engine built with **TypeScript**, **Node.js 26**, **MongoDB Atlas**, **WebSockets**, and **Vite**.
 
-It tracks user activity, page dwell time, and concurrent visits across websites in real time by establishing persistent WebSocket connections and logging periodic heartbeat pings into MongoDB collections.
+It supports a **hybrid dual-transport architecture**:
+
+1. **Fast-Refresh WebSocket Server (`@bengala/server-ws`)**: Persistent connection for high-frequency live presence, dwell time, and real-time active user counts (container/daemon deployment).
+2. **Low-Budget Serverless Ingestion (`@bengala/client`)**: Ephemeral HTTP ingestion endpoint ready for **Vercel** (`POST /api/track`), powered by `fetch` and `navigator.sendBeacon`.
+3. **Adaptive Client Tracker**: Runs in `'auto'`, `'websocket'`, or `'http'` mode with guaranteed exit-beacon delivery on tab close (`beforeunload` / `pagehide`).
 
 ---
 
 ## Architecture Overview
 
 ```
-+-----------------------------------------------------------+
-|                        Browser Client                     |
-|                                                           |
-|   1. Loads public/script.js                               |
-|   2. Resolves website ID (_beng$wid) & cookie (uid)       |
-|   3. Connects via WebSocket to ws://<host>:9080/          |
-|   4. Sends periodic heartbeats: { ts, wid, uid, pid }     |
-+-----------------------------+-----------------------------+
-                              |
-                              | WebSockets (ws://)
-                              v
-+-----------------------------------------------------------+
-|                     Bengala Server                        |
-|                                                           |
-|   - BengalaServer (classes/bengala/bengala-server.js)     |
-|       Manages incoming socket connections & IP tracking   |
-|   - BengalaWebSocket (classes/bengala/bengala-socket.js)  |
-|       Handles handshakes, assigns UIDs, queues messages   |
-|   - BengalaUser (classes/bengala/bengala-user.js)         |
-|       Encapsulates website, page path, user ID & perms    |
-+-----------------------------+-----------------------------+
-                              |
-                              | Ingests timelogs
-                              v
-+-----------------------------------------------------------+
-|                     MongoDB Storage                       |
-|                                                           |
-|   - BengalaMongo (classes/bengala/bengala-mongo.js)       |
-|       Dynamic multi-tenant database & collection routing: |
-|       Database:   beng-<wid>                              |
-|       Collection: beng-<wid>-<decoded_page_path>          |
-+-----------------------------------------------------------+
++-----------------------------------------------------------------------------------+
+|                                  Browser Client                                   |
+|                                                                                   |
+|  1. Embeds script.js or imports BengalaTracker (@bengala/client)                  |
+|  2. Resolves website ID (_beng$wid), session, and transport ('auto'|'ws'|'http')  |
+|  3. Real-Time Tracking: Periodic heartbeats { ts, wid, uid, pid }                 |
+|  4. Page Exit Hook: navigator.sendBeacon(httpUrl, payload)                        |
++--------------------------+------------------------------+-------------------------+
+                           |                              |
+             WebSocket     |                              | HTTP POST / sendBeacon
+             (ws://, wss://)                              | (/api/track)
+                           v                              v
++--------------------------------------+      +-------------------------------------+
+|        @bengala/server-ws            |      |          @bengala/client            |
+|  (Container: Docker / Railway / VPS) |      |        (Vercel Serverless)          |
+|                                      |      |                                     |
+|  - High-frequency persistent socket  |      |  - Ephemeral Serverless Function    |
+|  - Sequential FIFO message queue     |      |  - Low budget, scales to zero       |
+|  - Instant UID assignment            |      |  - Handles sendBeacon & fetch pings |
++------------------+-------------------+      +------------------+------------------+
+                   |                                             |
+                   +----------------------+----------------------+
+                                          |
+                                          | Ingests timelogs
+                                          v
++-----------------------------------------------------------------------------------+
+|                                MongoDB Atlas Cluster                              |
+|                                                                                   |
+|  - BengalaMongo dynamic routing & connection pooling                              |
+|  - Multi-tenant database: beng-<wid>                                              |
+|  - Partitioned page collection: beng-<wid>-<base64_encoded_page_path>             |
+|  - Tenant permissions & refresh rates: beng-<wid>.permission                      |
++-----------------------------------------------------------------------------------+
 ```
+
+---
+
+## Monorepo Packages
+
+Bengala is organized as a `pnpm` monorepo with three modular packages:
+
+| Package                  | Path                 | Purpose                                                                                                                           | Deployment Target                                 |
+| :----------------------- | :------------------- | :-------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------ |
+| **`@bengala/shared`**    | `packages/shared`    | Models (`BengalaUser`, `BengalaUserPermission`), in-memory FIFO queue, types, and MongoDB Atlas connection pool (`BengalaMongo`). | Internal workspace dependency                     |
+| **`@bengala/server-ws`** | `packages/server-ws` | Persistent WebSocket server handling concurrent socket streams, rapid timelog ingestion, and IP tracking.                         | Containers (Docker, Railway, Render, Fly.io, VPS) |
+| **`@bengala/client`**    | `packages/client`    | Dual-mode tracking client (bundled with Vite into `script.js`, ESM, and UMD) + Vercel Serverless API (`api/track.ts`).            | **Vercel** / CDN / Static Hosting                 |
 
 ---
 
 ## Features
 
-- **Real-Time Presence Tracking**: Measures exact dwell time and active presence through periodic heartbeats (default every 1000ms).
-- **Multi-Tenant Architecture**: Automatically isolates data per website by creating and routing to dedicated databases (`beng-<wid>`).
-- **Dynamic Page Collections**: Generates collection names based on base64-encoded URL paths, isolating metrics per page (`beng-<wid>-<page_path>`).
-- **Passive Mode & Permissions**: Reads tenant configuration from a `permission` collection in the target database to control automatic collection provisioning (`passive_mode`), heartbeat interval (`refresh_rate`), and cookie persistence.
-- **Message Queuing**: Processes socket messages sequentially through an internal FIFO queue to maintain event ordering and prevent race conditions.
-- **Anonymous User Identification**: Issues unique IDs (`uid`) using `uniqid` stored in client-side cookies to track return visits across sessions.
-- **Built-in Static Server**: Includes a minimal static HTTP server (`static-server.js`) to serve demo pages and the client tracking script.
+- **Hybrid Dual-Transport**: Switch between sub-second live WebSocket streams and serverless HTTP endpoints on the fly.
+- **Adaptive Fallback**: If WebSocket connection fails, the client seamlessly falls back to HTTP beacon pings.
+- **Guaranteed Exit Delivery**: Automatically captures tab close and page navigations via `navigator.sendBeacon`.
+- **Multi-Tenant Isolation**: Automatically provisions and routes data to tenant databases (`beng-<wid>`) and page collections (`beng-<wid>-<page_path>`).
+- **MongoDB Atlas Native**: Built-in support for `mongodb+srv://` connection strings with connection pooling and graceful health checks.
+- **FIFO Event Ordering**: Server-side sequential processing queue prevents race conditions during high-volume spikes.
+- **Vite-Powered Bundler**: Produces highly optimized standalone UMD and ESM client bundles.
+- **Ready for Node 26**: Leverages native `--env-file` support and modern ES2023 language features.
 
 ---
 
-## Data Protocol
-
-### 1. Initial Handshake
-
-When a client visits a tracked page:
-
-1. The client script connects to the WebSocket server.
-2. If no user ID cookie exists, it sends an initial handshake:
-   ```json
-   {
-     "ts": 1731405000000,
-     "wid": "00001",
-     "pid": "L2luZGV4Lmh0bWw="
-   }
-   ```
-3. The server generates a unique `uid` and replies:
-   ```json
-   {
-     "uid": "1k3f9a7z..."
-   }
-   ```
-4. The client saves the `uid` in a cookie for future visits.
-
-### 2. Heartbeat Ping
-
-While the page remains open, the client sends a periodic heartbeat at the configured clock rate:
-
-```json
-{
-  "ts": 1731405001000,
-  "wid": "00001",
-  "uid": "1k3f9a7z...",
-  "pid": "L2luZGV4Lmh0bWw="
-}
-```
-
-The server strips routing metadata (`wid`, `pid`) and inserts the timelog `{ ts: ..., uid: ... }` directly into the corresponding page collection in MongoDB.
-
----
-
-## Project Structure
+## Workspace Structure
 
 ```text
-├── src/                            # TypeScript source files
-│   ├── app.ts                      # Main application entry point (WebSocket server + static server)
-│   ├── static-server.ts            # Standalone HTTP static file server for public/ assets
-│   ├── index.ts                    # Primary module exports & types
-│   ├── types.ts                    # TypeScript interfaces & configuration types
-│   ├── client/
-│   │   └── tracker.ts              # Client tracking library (built with Vite)
-│   ├── bengala/
-│   │   ├── bengala-server.ts       # WebSocket server lifecycle (ws listener, IP detection)
-│   │   ├── bengala-socket.ts       # Socket connection handler, message queue, UID assignment
-│   │   ├── bengala-mongo.ts        # MongoDB connection pooling, collection routing & timelogs
-│   │   ├── bengala-user.ts         # User model, database/collection name resolution
-│   │   └── bengala-user-permission.ts # Tenant permission model (passive_mode, refresh_rate)
-│   └── utilities/
-│       └── queue.ts                # Generic in-memory FIFO queue for sequential event processing
-├── dist/                           # Compiled server outputs (tsc) and client bundles (vite)
-├── public/                         # Client-side demo & integration scripts
-│   ├── index.html                  # Sample web page demonstrating tracker activation
-│   ├── test.html                   # Secondary test page for multi-page tracking
-│   └── script.js                   # Client-side tracking script (embeddable on external sites)
-├── package.json                    # Project metadata, dependencies, scripts, engines
-├── tsconfig.json                   # TypeScript compiler options
-├── vite.config.mts                 # Vite configuration for building and serving client assets
-├── pnpm-lock.yaml                  # pnpm lockfile
-├── pnpm-workspace.yaml             # pnpm workspace & build approval settings
-├── eslint.config.js                # ESLint configuration (Flat config with typescript-eslint)
-└── commitlint.config.js            # Conventional commit validation rules
+bengala/
+├── packages/
+│   ├── shared/                     # @bengala/shared: Core types & MongoDB Atlas connector
+│   │   ├── src/
+│   │   │   ├── mongo.ts            # MongoDB Atlas connection manager & timelog writer
+│   │   │   ├── user.ts             # User model and database/collection path resolver
+│   │   │   ├── permission.ts       # Tenant permission configuration model
+│   │   │   ├── queue.ts            # Generic in-memory FIFO queue
+│   │   │   ├── types.ts            # Shared TypeScript interfaces & configurations
+│   │   │   └── index.ts            # Public library exports
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   │
+│   ├── server-ws/                  # @bengala/server-ws: High-frequency WebSocket engine
+│   │   ├── src/
+│   │   │   ├── server.ts           # WebSocketServer lifecycle and client registry
+│   │   │   ├── socket.ts           # Connection handler, queue, and handshake manager
+│   │   │   ├── app.ts              # Node 26 CLI entry point with graceful shutdown
+│   │   │   └── index.ts            # Export entry point
+│   │   ├── Dockerfile              # Multi-stage production container build
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   │
+│   └── client/                     # @bengala/client: Tracker bundle & Vercel serverless
+│       ├── src/
+│       │   └── tracker.ts          # Dual-transport tracker (WebSocket + fetch/sendBeacon)
+│       ├── api/
+│       │   └── track.ts            # Vercel Serverless Function (POST /api/track)
+│       ├── public/                 # Static assets for demo & testing
+│       ├── index.html              # Interactive client demo page with transport selector
+│       ├── test.html               # Secondary tracking validation page
+│       ├── vercel.json             # Vercel deployment configuration & CORS headers
+│       ├── vite.config.mts         # Vite build configuration (UMD, ESM, script.js)
+│       ├── package.json
+│       └── tsconfig.json
+│
+├── package.json                    # Monorepo root scripts & dev dependencies
+├── pnpm-workspace.yaml             # Workspace definitions
+├── tsconfig.base.json              # Shared TypeScript compiler options
+├── tsconfig.json                   # Root TypeScript configuration
+├── eslint.config.js                # Flat ESLint configuration
+├── commitlint.config.js            # Conventional Commitlint rules
+└── .env.example                    # Template environment variables
 ```
 
 ---
 
 ## Prerequisites
 
-- **Node.js**: `>= 26`
-- **pnpm**: `>= 10`
-- **MongoDB**: MongoDB Atlas cluster or local MongoDB instance
+- **Node.js**: `>= 26.0.0`
+- **pnpm**: `>= 10.0.0`
+- **MongoDB**: MongoDB Atlas cluster (or local MongoDB `>= 7.0`)
 
 ---
 
 ## Configuration
 
-Bengala uses Node 26's native `--env-file-if-exists=.env` support. Copy the example configuration to get started:
+Bengala uses Node 26's native `--env-file-if-exists=.env` support. Copy the example file:
 
 ```bash
 cp .env.example .env
 ```
 
-### MongoDB Atlas Setup
-
-To connect to MongoDB Atlas, set `MONGODB_URI` in `.env`:
+### Environment Variables
 
 ```env
+# MongoDB Atlas Connection URI
 MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-name>.mongodb.net/?retryWrites=true&w=majority
+
+# Or individual parameters
+MONGO_HOST=cluster0.abcde.mongodb.net
+MONGO_PROTOCOL=mongodb+srv
+MONGO_USER=myUser
+MONGO_PASSWORD=myPassword
+MONGO_OPTIONS=retryWrites=true&w=majority
+MONGO_PREFIX=beng-
+
+# WebSocket Server Port (default 9080)
+PORT=9080
+
+# Environment Mode
+NODE_ENV=development
 ```
-
-Alternatively, you can provide individual variables:
-
-- `MONGO_HOST`: Atlas cluster hostname (e.g. `cluster0.abcde.mongodb.net`)
-- `MONGO_PROTOCOL`: `mongodb+srv`
-- `MONGO_USER`: Database username
-- `MONGO_PASSWORD`: Database user password
-- `MONGO_OPTIONS`: Query parameters (e.g. `retryWrites=true&w=majority`)
-- `MONGO_PREFIX`: Database tenant prefix (default `beng-`)
 
 ---
 
 ## Getting Started
 
-### 1. Installation
+### 1. Install Dependencies
 
 ```bash
 pnpm install
 ```
 
-### 2. MongoDB Setup
+### 2. Build All Packages
 
-- **MongoDB Atlas**: Ensure your IP address is added to the Atlas Network Access whitelist and `MONGODB_URI` is configured in `.env`.
-- **Local MongoDB**: Ensure MongoDB is running locally:
+Builds `@bengala/shared`, `@bengala/server-ws`, and bundles `@bengala/client` with Vite:
+
+```bash
+pnpm run build
+```
+
+Or build individual workspaces:
+
+```bash
+pnpm run build:shared
+pnpm run build:server
+pnpm run build:client
+```
+
+### 3. Development Workflow
+
+- **Run WebSocket Server locally**:
+
   ```bash
-  pnpm run mongo
-  # Or: mongod --dbpath /path/to/data/db
+  pnpm run dev
+  # Runs tsx watch on packages/server-ws/src/app.ts (listening on ws://localhost:9080)
   ```
 
-### 3. Build the Project
+- **Run Client & Demo locally**:
+  ```bash
+  pnpm run dev:client
+  # Starts Vite dev server at http://localhost:5173
+  ```
+
+---
+
+## Deployment Guide
+
+### Deploying the Client to Vercel (Low-Budget Serverless)
+
+The `packages/client` folder is pre-configured for instant deployment on **Vercel**:
+
+1. **Link your repository to Vercel** via CLI or Dashboard:
+   ```bash
+   cd packages/client
+   npx vercel
+   ```
+2. **Set Root Directory** in Vercel Project Settings to `packages/client` (or deploy the root with Framework Preset: `Vite`).
+3. **Configure Environment Variables** in Vercel:
+   - `MONGODB_URI`: Your MongoDB Atlas connection string.
+4. **Deploy**:
+   - The Vite build publishes `dist/script.js`, `dist/bengala.es.js`, and demo HTML pages.
+   - The serverless function handles `POST /api/track` directly into MongoDB Atlas.
+
+### Deploying the WebSocket Server to Containers (Fast-Refresh)
+
+The `packages/server-ws` package includes an optimized multi-stage `Dockerfile`:
 
 ```bash
-# Build both server (tsc) and client bundle (Vite)
-pnpm run build
+# Build the Docker image
+docker build -f packages/server-ws/Dockerfile -t bengala-server-ws .
 
-# Or build individually:
-pnpm run build:server   # Compiles TypeScript backend into dist/
-pnpm run build:client   # Bundles client tracker with Vite into dist/client/
+# Run the container
+docker run -p 9080:9080 \
+  -e MONGODB_URI="mongodb+srv://user:pass@cluster.mongodb.net/?retryWrites=true&w=majority" \
+  bengala-server-ws
 ```
 
-### 4. Run Development Server
-
-```bash
-# Start backend server with tsx watch
-pnpm run dev
-
-# Or start Vite client dev server
-pnpm run dev:client
-```
-
-Uses `tsx watch` to start with hot-reloading:
-
-- The **WebSocket server** on port `9080` (or `PORT` environment variable).
-- The **Static file server** on port `3000`.
-
-### 5. Run Production Server
-
-```bash
-pnpm run build
-pnpm start
-```
+Deployable to **Railway**, **Render**, **Fly.io**, **AWS ECS**, or any VPS.
 
 ---
 
 ## Client Integration
 
-To track a web page, include the `script.js` client tracker and declare your website ID:
+Embed Bengala into any website by adding the tracker script:
 
 ```html
-<!-- Define the Website ID -->
+<!-- 1. Define website ID and optional transport preference -->
 <script type="text/javascript">
   var _beng$wid = '00001';
+  // Optional: 'auto' (default), 'websocket', or 'http'
+  var _beng$transport = 'auto';
+  // Optional custom endpoints:
+  var _beng$wsUrl = 'wss://ws.yourdomain.com';
+  var _beng$httpUrl = 'https://analytics.yourdomain.com/api/track';
 </script>
 
-<!-- Load Bengala Client Tracker -->
-<script type="text/javascript" src="http://localhost:3000/script.js"></script>
+<!-- 2. Load the Bengala Tracker script -->
+<script
+  type="text/javascript"
+  src="https://analytics.yourdomain.com/script.js"
+  async
+></script>
+```
+
+### ESM Module Usage
+
+```typescript
+import createTracker from '@bengala/client';
+
+const tracker = createTracker({
+  transport: 'auto',
+  wsUrl: 'wss://ws.yourdomain.com',
+  httpUrl: 'https://analytics.yourdomain.com/api/track'
+});
+
+tracker.init();
 ```
 
 ---
 
-## Code Quality & Tooling
+## Code Quality & Verification
+
+Bengala enforces strict code quality standards:
 
 - **Type Checking**:
   ```bash
@@ -242,18 +290,18 @@ To track a web page, include the `script.js` client tracker and declare your web
   ```
 - **Linting**:
   ```bash
-  pnpm run lint
   pnpm run lint:check
+  pnpm run lint
   ```
-- **Code Formatting**:
+- **Formatting**:
   ```bash
-  pnpm run format
   pnpm run format:check
+  pnpm run format
   ```
-- **Full Test Suite**:
+- **Unified Test Pipeline**:
   ```bash
   pnpm test
   ```
 - **Git Hooks**:
-  - `pre-commit`: Automatically runs `lint-staged` (ESLint `--fix` and Prettier `--write`).
-  - `commit-msg`: Enforces Conventional Commits using `commitlint`.
+  - `pre-commit`: Automatically runs `lint-staged` with ESLint and Prettier.
+  - `commit-msg`: Enforces Conventional Commits via `commitlint`.

@@ -1,6 +1,6 @@
-node_modules
-dist
-public/script.js
+**/node_modules
+**/dist
+**/public
 pnpm-lock.yaml
 .git
 .vscode

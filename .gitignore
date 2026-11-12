@@ -38,7 +38,7 @@ Thumbs.db
 
 .eslintcache
 /nbproject/private/
-/node_modules/
+node_modules/
 dist/
 .vscode/
 

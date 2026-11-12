@@ -1,15 +1,16 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { IncomingMessage } from 'http';
-import BengalaMongo from './bengala-mongo';
-import BengalaWebSocket from './bengala-socket';
-import type { BengalaServerConfiguration, MongoConfiguration } from '../types';
+import {
+  BengalaMongo,
+  type MongoConfiguration,
+  type BengalaServerConfiguration
+} from '@bengala/shared';
+import BengalaWebSocket from './socket';
 
-export class Bengala {
+export class BengalaServer {
   public configuration: BengalaServerConfiguration;
   public server: WebSocketServer;
   public mongo: BengalaMongo | null;
-
-  static Mongo = BengalaMongo;
 
   constructor(configuration: BengalaServerConfiguration) {
     this.configuration = configuration;
@@ -29,7 +30,7 @@ export class Bengala {
 
   start(): void {
     if (this.mongo !== null) {
-      console.log('Server address:', this.server.address());
+      console.log('WebSocket Server address:', this.server.address());
 
       this.server.on('listening', this.onListening.bind(this));
       this.server.on('connection', this.onConnection.bind(this));
@@ -95,4 +96,4 @@ export class Bengala {
   }
 }
 
-export default Bengala;
+export default BengalaServer;

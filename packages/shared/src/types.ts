@@ -1,5 +1,4 @@
 import type { MongoClientOptions } from 'mongodb';
-import type { ServerOptions as WsServerOptions } from 'ws';
 
 export interface MongoConfiguration {
   uri?: string;
@@ -12,8 +11,6 @@ export interface MongoConfiguration {
   prefix?: string;
   clientOptions?: MongoClientOptions;
 }
-
-export type BengalaServerConfiguration = WsServerOptions;
 
 export interface UserPermissionConfig {
   passive_mode?: boolean;
@@ -32,5 +29,30 @@ export interface BengalaIncomingMessage {
   pid?: string;
   uid?: string;
   ts?: number;
+  [key: string]: unknown;
+}
+
+export type TransportType = 'auto' | 'websocket' | 'http';
+
+export interface TrackerClientOptions {
+  wid?: string;
+  transport?: TransportType;
+  wsUrl?: string;
+  httpUrl?: string;
+  clockRate?: number;
+}
+
+// Configuration for WebSocket server
+export interface BengalaServerConfiguration {
+  host?: string;
+  port?: number;
+  path?: string;
+  noServer?: boolean;
+  clientTracking?: boolean;
+  verifyClient?: (info: {
+    origin: string;
+    secure: boolean;
+    req?: unknown;
+  }) => boolean;
   [key: string]: unknown;
 }

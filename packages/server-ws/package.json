@@ -1,0 +1,23 @@
+{
+  "name": "@bengala/server-ws",
+  "version": "0.0.2",
+  "description": "High-frequency persistent WebSocket ingestion server for Bengala",
+  "main": "dist/server.js",
+  "types": "dist/server.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node --env-file-if-exists=.env dist/app.js",
+    "dev": "tsx watch --env-file-if-exists=.env src/app.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@bengala/shared": "workspace:*",
+    "ws": "^8.22.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/ws": "^8.18.2",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  }
+}
