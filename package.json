@@ -10,8 +10,8 @@
   },
   "packageManager": "pnpm@12.18.0",
   "scripts": {
-    "start": "node ./app.js",
-    "dev": "nodemon app.js --exec \"pnpm lint && node\"",
+    "start": "node --env-file-if-exists=.env ./app.js",
+    "dev": "nodemon --env-file-if-exists=.env app.js --exec \"pnpm lint && node\"",
     "lint": "eslint --fix app.js static-server.js classes/",
     "lint:check": "eslint app.js static-server.js classes/",
     "format": "prettier --write .",

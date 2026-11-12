@@ -129,7 +129,34 @@ The server strips routing metadata (`wid`, `pid`) and inserts the timelog `{ ts:
 
 - **Node.js**: `>= 26`
 - **pnpm**: `>= 10`
-- **MongoDB**: `27017` (running locally or accessible via URI)
+- **MongoDB**: MongoDB Atlas cluster or local MongoDB instance
+
+---
+
+## Configuration
+
+Bengala uses Node 26's native `--env-file-if-exists=.env` support. Copy the example configuration to get started:
+
+```bash
+cp .env.example .env
+```
+
+### MongoDB Atlas Setup
+
+To connect to MongoDB Atlas, set `MONGODB_URI` in `.env`:
+
+```env
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-name>.mongodb.net/?retryWrites=true&w=majority
+```
+
+Alternatively, you can provide individual variables:
+
+- `MONGO_HOST`: Atlas cluster hostname (e.g. `cluster0.abcde.mongodb.net`)
+- `MONGO_PROTOCOL`: `mongodb+srv`
+- `MONGO_USER`: Database username
+- `MONGO_PASSWORD`: Database user password
+- `MONGO_OPTIONS`: Query parameters (e.g. `retryWrites=true&w=majority`)
+- `MONGO_PREFIX`: Database tenant prefix (default `beng-`)
 
 ---
 
@@ -143,15 +170,12 @@ pnpm install
 
 ### 2. MongoDB Setup
 
-Ensure MongoDB is running locally on the default port:
-
-```bash
-# Using the package script (pointing to local mongod)
-pnpm run mongo
-
-# Or start your system MongoDB service
-mongod --dbpath /path/to/data/db
-```
+- **MongoDB Atlas**: Ensure your IP address is added to the Atlas Network Access whitelist and `MONGODB_URI` is configured in `.env`.
+- **Local MongoDB**: Ensure MongoDB is running locally:
+  ```bash
+  pnpm run mongo
+  # Or: mongod --dbpath /path/to/data/db
+  ```
 
 ### 3. Run Development Server
 

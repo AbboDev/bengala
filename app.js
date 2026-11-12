@@ -31,9 +31,14 @@ function normalizePort(val) {
 const Bengala = require('./classes/bengala');
 
 const mongoConf = {
+  // Direct connection string for MongoDB Atlas or standalone URI
+  uri: process.env.MONGODB_URI || process.env.MONGO_URI,
   port: parseInt(process.env.MONGO_PORT || '27017', 10),
   protocol: process.env.MONGO_PROTOCOL || 'mongodb',
   domain: process.env.MONGO_HOST || 'localhost',
+  user: process.env.MONGO_USER,
+  password: process.env.MONGO_PASSWORD,
+  options: process.env.MONGO_OPTIONS,
   prefix: process.env.MONGO_PREFIX || 'beng-'
 };
 
@@ -55,3 +60,17 @@ const bengalaMongo = new Bengala.Mongo(mongoConf);
 
 bengala.setupMongo(bengalaMongo);
 bengala.start();
+
+// Graceful shutdown
+const handleShutdown = async (signal) => {
+  console.info(`Received ${signal}. Shutting down Bengala...`);
+  try {
+    await bengalaMongo.close();
+  } catch (err) {
+    console.error('Error during shutdown:', err);
+  }
+  process.exit(0);
+};
+
+process.on('SIGINT', () => handleShutdown('SIGINT'));
+process.on('SIGTERM', () => handleShutdown('SIGTERM'));
