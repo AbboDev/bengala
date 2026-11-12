@@ -1,54 +1,43 @@
-/**
- *
- */
 'use strict';
 
 const BengalaUser = require('./bengala-user');
-
 const Queue = require('../utilities/queue');
 
 /**
- * Wrapper which connect a socket with is current user
+ * Wrapper which connects a socket with its current user
  */
 class BengalaWebSocket {
-  /**
-   *
-   */
   constructor(ws, storage) {
     this.ws = ws;
     this.storage = storage;
 
     this.user = null;
     this.queue = new Queue();
+    this.ip = null;
   }
 
-  /**
-   *
-   */
   sendWebsiteID() {
-    this.ws.send(JSON.stringify({uid: this.user.identifier}), (error) => {
-      if (error == undefined) {
-        return;
-      } else {
+    this.ws.send(JSON.stringify({ uid: this.user.identifier }), (error) => {
+      if (error) {
         console.error('Async error: ' + error);
       }
     });
   }
 
+  async onMessage(message) {
+    let parsed;
+    try {
+      parsed = this.parseMessage(message);
+    } catch (err) {
+      console.error(err);
+      return;
+    }
 
-  /**
-   * onMessage - description
-   *
-   * @param  {type} message description
-   * @return {type}         description
-   */
-  onMessage(message) {
-    let parsed = this.parseMessage(message);
     this.queue.add(parsed);
 
     if (this.checkParams(parsed.wid) && this.checkParams(parsed.pid)) {
-      if (this.user === null) { // First boot of user/socket
-        if (this.checkParams(parsed.uid)) { // The user was already on the website
+      if (this.user === null) {
+        if (this.checkParams(parsed.uid)) {
           this.user = new BengalaUser(parsed.wid, parsed.pid, parsed.uid);
         } else {
           this.user = new BengalaUser(parsed.wid, parsed.pid);
@@ -56,90 +45,67 @@ class BengalaWebSocket {
         }
       }
 
-      if (this.checkParams(parsed.uid)) { // First boot of user/socket
-        this.getPermission()
-          .then((permission) => this.storage.getCollection(
+      if (this.checkParams(parsed.uid)) {
+        try {
+          const permission = await this.getPermission();
+          const collection = await this.storage.getCollection(
             this.user.getDatabase(),
-            // Take not the current but the first of current queue
             this.user.getCollection(this.queue.first().pid),
             permission
-          ))
-          .then((collection) => {
-            // Use the first inserted item in the list
-            let item = this.queue.remove();
-            let message = this.removeKeys(item, ['wid', 'pid']);
+          );
 
-            // console.log(item);
+          const item = this.queue.remove();
+          const cleanMessage = this.removeKeys(item, ['wid', 'pid']);
 
-            this.storage.insertTimelog(collection, message);
-          })
-          .catch((error) => {
-            console.error(error);
-          });
+          await this.storage.insertTimelog(collection, cleanMessage);
+        } catch (error) {
+          console.error(error);
+        }
       }
     }
   }
 
-  getPermission() {
-    return new Promise((resolve, reject) => {
-      this.storage.getDatabasePermission(this.user.getDatabase())
-        .then((collection) => {
-          let permission = collection[0];
+  async getPermission() {
+    const documents = await this.storage.getDatabasePermission(
+      this.user.getDatabase()
+    );
+    const permission = documents && documents.length > 0 ? documents[0] : {};
 
-          this.user.setPermission(permission);
-          resolve(permission);
-        })
-        .catch((error) => {
-          reject(error);
-        });
-    });
+    this.user.setPermission(permission);
+    return permission;
   }
 
   removeKeys(object, keys) {
+    const copy = { ...object };
     if (Array.isArray(keys)) {
-      let array_length = keys.length;
-      for (var i = array_length - 1; i >= 0; i--) {
-        delete object[keys[i]];
+      for (const key of keys) {
+        delete copy[key];
       }
     } else {
-      delete object[keys];
+      delete copy[keys];
     }
-
-    return object;
+    return copy;
   }
 
-  /**
-   *
-   */
   checkParams(value) {
     return typeof value !== 'undefined' && value !== false && value !== null;
   }
 
-  /**
-   *
-   */
   onClose() {
     console.info('Connection closed');
-    return;
   }
 
-  /**
-   *
-   */
   onError(error) {
     console.error('Found error: ', error);
-    return;
   }
 
-  /**
-   *
-   */
   parseMessage(message) {
     try {
-      let parsed = JSON.parse(message);
-      return parsed;
+      const str =
+        typeof message === 'string' ? message : message.toString('utf8');
+      return JSON.parse(str);
     } catch (error) {
-      throw new Error('Failed to convert message into JSON');
+      throw new Error('Failed to convert message into JSON', { cause: error });
     }
   }
 }

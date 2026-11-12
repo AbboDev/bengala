@@ -118,6 +118,8 @@ The server strips routing metadata (`wid`, `pid`) and inserts the timelog `{ ts:
 │   └── script.js                   # Client-side tracking script (embeddable on external sites)
 ├── package.json                    # Project metadata, dependencies, scripts, engines
 ├── pnpm-lock.yaml                  # pnpm lockfile
+├── pnpm-workspace.yaml             # pnpm workspace & build approval settings
+├── eslint.config.js                # ESLint configuration (Flat config)
 └── commitlint.config.js            # Conventional commit validation rules
 ```
 
@@ -125,7 +127,7 @@ The server strips routing metadata (`wid`, `pid`) and inserts the timelog `{ ts:
 
 ## Prerequisites
 
-- **Node.js**: `>= 24`
+- **Node.js**: `>= 26`
 - **pnpm**: `>= 10`
 - **MongoDB**: `27017` (running locally or accessible via URI)
 

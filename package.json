@@ -1,7 +1,7 @@
 {
   "name": "bengala",
   "version": "0.0.2",
-  "description": "",
+  "description": "Real-time web analytics and user presence tracking engine",
   "main": "app.js",
   "author": {
     "name": "Thomas Abbondi",
@@ -11,39 +11,39 @@
   "packageManager": "pnpm@12.18.0",
   "scripts": {
     "start": "node ./app.js",
-    "lint": "eslint --fix --cache app.js static-server.js classes/**",
+    "dev": "nodemon app.js --exec \"pnpm lint && node\"",
+    "lint": "eslint --fix app.js static-server.js classes/",
+    "lint:check": "eslint app.js static-server.js classes/",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "dev": "nodemon app.js --exec \"pnpm lint && node\"",
-    "mongo": "mongod --dbpath J:/mongo",
+    "test": "pnpm lint:check && pnpm format:check",
+    "mongo": "mongod --dbpath ./data/db",
     "prepare": "husky"
   },
   "dependencies": {
-    "cookie-parser": "~1.4.3",
-    "debug": "~2.6.9",
-    "finalhandler": "^1.1.1",
-    "mongodb": "^3.1.13",
-    "morgan": "~1.9.0",
-    "rotating-file-stream": "^1.4.0",
-    "uniqid": "^5.0.3",
-    "ws": "^6.2.0"
+    "mongodb": "^7.8.0",
+    "uniqid": "^5.4.0",
+    "ws": "^8.22.2"
   },
   "files": [
-    "browser.js",
     "app.js",
-    "classes/*.js"
+    "static-server.js",
+    "classes/**/*.js",
+    "public/**/*"
   ],
   "devDependencies": {
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.4",
-    "eslint": "^5.15.3",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",
-    "nodemon": "^1.18.10",
+    "nodemon": "^3.1.14",
     "prettier": "^3.10.1"
   },
   "engines": {
-    "node": ">=24",
+    "node": ">=26",
     "pnpm": ">=10"
   }
 }

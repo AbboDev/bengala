@@ -1,208 +1,122 @@
-/**
- *
- */
 'use strict';
 
-const Mongo = require('mongodb');
+const { MongoClient } = require('mongodb');
 
 class BengalaMongo {
-  /**
-   *
-   */
-  constructor(configuration) {
+  constructor(configuration = {}) {
     this.configuration = configuration;
-    this.mongo = Mongo.MongoClient;
+    this.protocol = configuration.protocol || 'mongodb';
+    this.uri = configuration.domain || configuration.uri || 'localhost';
+    this.port = configuration.port || 27017;
+    this.prefix = configuration.prefix || 'beng-';
 
     /**
-     * @var contains all the current active client, group by db names
+     * Contains all the current active clients, grouped by database name
      */
     this.connections = {};
 
     /**
-     * @var contains all the databases with relatives collections
+     * Contains all known databases and their cached collections
      */
     this.databases = {};
   }
 
-  /**
-   *
-   */
   getPath() {
-    return `${this.protocol || 'mongodb'}://${this.uri || 'localhost'}:${this.port || 27017}`;
+    return `${this.protocol}://${this.uri}:${this.port}`;
   }
 
-  /**
-   *
-   */
-  getDatabasePermission(database) {
-    return new Promise((resolve, reject) => {
-      this.getConnection(this.getPath(), database, {
-        useNewUrlParser: true
-      })
-        .then((db) => this.checkDatabase(db, database))
-        .then((db) => this.checkCollection(db, 'permission'))
-        .then((collection) => {
-          let permission = this.getDocuments(collection);
-          resolve(permission);
-        }).catch((error) => {
-          reject(error);
-        });
-    });
+  async getDatabasePermission(database) {
+    const db = await this.getConnection(this.getPath(), database);
+    await this.checkDatabase(db, database);
+    try {
+      const collection = await this.checkCollection(db, 'permission', false);
+      return await this.getDocuments(collection);
+    } catch {
+      return [];
+    }
   }
 
-  /**
-   *
-   */
-  getCollection(database, collection, permission) {
-    return new Promise((resolve, reject) => {
-      this.getConnection(this.getPath(), database, {
-        useNewUrlParser: true
-      })
-        .then((db) => this.checkDatabase(db, database))
-        .then((db) => this.checkCollection(db, collection, permission.passive_mode || false))
-        .then((collection) => {
-          resolve(collection);
-        }).catch((error) => {
-          reject(error);
-        });
-    });
+  async getCollection(database, collection, permission = {}) {
+    const db = await this.getConnection(this.getPath(), database);
+    await this.checkDatabase(db, database);
+    const passiveMode =
+      permission.passive_mode !== undefined ? permission.passive_mode : true;
+    return await this.checkCollection(db, collection, passiveMode);
   }
 
-  /**
-   *
-   */
-  getConnection(path, database, configuration = {}) {
-    return new Promise((resolve, reject) => {
-      // Avoid to recreate multiple connection to the same database
-      if (!(database in this.connections)) {
-        this.mongo.connect(path, configuration)
-          .then((client) => {
-            let db = client.db(database);
+  async getConnection(path, database, configuration = {}) {
+    if (!this.connections[database]) {
+      const client = new MongoClient(path, configuration);
+      await client.connect();
+      this.connections[database] = client;
+    }
+    return this.connections[database].db(database);
+  }
 
-            if (!(database in this.connections)) {
-              this.connections[database] = client;
-            }
+  async checkDatabase(db, database) {
+    const adminDb = db.admin();
+    const dbs = await adminDb.listDatabases();
 
-            resolve(db);
-          })
-          .catch((error) => {
-            reject(error);
-          });
-      } else {
-        let db = this.connections[database].db(database);
-        resolve(db);
+    for (const d of dbs.databases) {
+      if (!(d.name in this.databases)) {
+        this.databases[d.name] = [];
       }
-    });
+    }
+
+    const dbExists = dbs.databases.some((d) => d.name === database);
+    if (!dbExists) {
+      throw new Error('Database not found: ' + database);
+    }
+
+    return db;
   }
 
-  /**
-   * checkDatabase - description
-   *
-   * @param  {type} db       description
-   * @param  {type} database description
-   * @return {type}          description
-   */
-  checkDatabase(db, database) {
-    return new Promise((resolve, reject) => {
-      db.admin().listDatabases((error, dbs) => {
-        if (error != undefined) {
-          reject(error);
+  async checkCollection(db, collection, createIfNotExist = true) {
+    const databaseName = db.databaseName;
+    if (!this.databases[databaseName]) {
+      this.databases[databaseName] = [];
+    }
+
+    const dbcs = await db.listCollections().toArray();
+    for (const dbc of dbcs) {
+      if (!this.databases[databaseName].includes(dbc.name)) {
+        this.databases[databaseName].push(dbc.name);
+      }
+    }
+
+    const dbcExists = dbcs.some((dbc) => dbc.name === collection);
+
+    if (!dbcExists) {
+      if (createIfNotExist) {
+        if (!this.databases[databaseName].includes(collection)) {
+          this.databases[databaseName].push(collection);
         }
+        await db.createCollection(collection);
+      } else {
+        throw new Error('Collection not found: ' + collection);
+      }
+    }
 
-        let db_exist = dbs.databases.some((db) => {
-          if (!(db.name in this.databases)) {
-            this.databases[db.name] = [];
-          }
-
-          return db.name === database;
-        });
-
-        if (db_exist === false) {
-          reject(new Error('Database not found: ' + database));
-        }
-
-        resolve(db);
-      });
-    });
+    return db.collection(collection);
   }
 
-  /**
-   * checkCollection - description
-   *
-   * @param  {type} db                      description
-   * @param  {type} collection              description
-   * @param  {boolean} createIfNotExist = true description
-   * @return {type}                         description
-   */
-  checkCollection(db, collection, createIfNotExist = true) {
-    return new Promise((resolve, reject) => {
-      let databaseName = db.s.databaseName;
-
-      db.listCollections().toArray((error, dbcs) => {
-        if (error != undefined) {
-          reject(error);
-        }
-
-        let dbc_exist = dbcs.some((dbc) => {
-          if (!this.databases[databaseName].includes(dbc.name)) {
-            this.databases[databaseName].push(dbc.name);
-
-            console.log(this.databases);
-          }
-
-          return dbc.name === collection;
-        });
-
-        if (dbc_exist === false) {
-          if (createIfNotExist === true && !this.databases[databaseName].includes(collection)) {
-            this.databases[databaseName].push(collection);
-            db.createCollection(collection, {})
-              .catch((error) => {
-                console.info('info', error);
-              });
-          } else {
-            reject(new Error('Collection not found: ' + collection));
-          }
-        }
-
-        resolve(db.collection(collection));
-      });
-    });
-  }
-
-  /**
-   *
-   */
-  insertTimelog(collection, data) {
+  async insertTimelog(collection, data) {
     if (Array.isArray(data)) {
-      let ts_set = data.every((doc) => {
-        return doc.ts !== null;
-      });
-
-      if (ts_set === true) {
-        return collection.insertMany(data);
+      const tsSet = data.every(
+        (doc) => doc.ts !== null && doc.ts !== undefined
+      );
+      if (tsSet) {
+        return await collection.insertMany(data);
       }
     } else {
-      if (data.ts !== null) {
-        return collection.insertOne(data);
+      if (data && data.ts !== null && data.ts !== undefined) {
+        return await collection.insertOne(data);
       }
     }
   }
 
-  /**
-   *
-   */
-  getDocuments(collection, filter = {}) {
-    return new Promise((resolve, reject) => {
-      collection.find(filter)
-        .toArray()
-        .then((response) => {
-          resolve(response);
-        })
-        .catch((error) => {
-          reject(error);
-        });
-    });
+  async getDocuments(collection, filter = {}) {
+    return await collection.find(filter).toArray();
   }
 }
 

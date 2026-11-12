@@ -1,71 +1,82 @@
+'use strict';
+
 const http = require('http');
-const url = require('url');
 const fs = require('fs');
 const path = require('path');
-const port = process.argv[2] || 3000;
-const base = process.argv[3] || '/public';
 
-http.createServer(function (req, res) {
+const port = process.env.STATIC_PORT || process.argv[2] || 3000;
+const base = process.argv[3] || 'public';
+
+const mimeMap = {
+  '.ico': 'image/x-icon',
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.json': 'application/json',
+  '.css': 'text/css',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.wav': 'audio/wav',
+  '.mp3': 'audio/mpeg',
+  '.svg': 'image/svg+xml',
+  '.pdf': 'application/pdf',
+  '.doc': 'application/msword'
+};
+
+const server = http.createServer((req, res) => {
   console.log(`${req.method} ${req.url}`);
 
-  // parse URL
-  const parsedUrl = url.parse(req.url);
-  // extract URL path
-  let pathname = `.${base}${parsedUrl.pathname}`;
-  // based on the URL path, extract the file extention. e.g. .js, .doc, ...
-  const ext = path.parse(pathname).ext;
-  // maps file extention to MIME typere
-  const map = {
-    '.ico': 'image/x-icon',
-    '.html': 'text/html',
-    '.js': 'text/javascript',
-    '.json': 'application/json',
-    '.css': 'text/css',
-    '.png': 'image/png',
-    '.jpg': 'image/jpeg',
-    '.wav': 'audio/wav',
-    '.mp3': 'audio/mpeg',
-    '.svg': 'image/svg+xml',
-    '.pdf': 'application/pdf',
-    '.doc': 'application/msword'
-  };
+  const parsedUrl = new URL(
+    req.url,
+    `http://${req.headers.host || 'localhost'}`
+  );
+  let safePath = path
+    .normalize(parsedUrl.pathname)
+    .replace(/^(\.\.[/\\])+/, '');
+  if (safePath === '/' || safePath === '') {
+    safePath = '/index.html';
+  }
 
-  fs.exists(pathname, function (exist) {
-    if(!exist) {
-      // if the file is not found, return 404
+  let filePath = path.join(__dirname, base, safePath);
+
+  if (!fs.existsSync(filePath)) {
+    res.statusCode = 404;
+    res.end(`File ${safePath} not found!`);
+    return;
+  }
+
+  if (fs.statSync(filePath).isDirectory()) {
+    filePath = path.join(filePath, 'index.html');
+    if (!fs.existsSync(filePath)) {
       res.statusCode = 404;
-      res.end(`File ${pathname} not found!`);
+      res.end(`Index file in ${safePath} not found!`);
+      return;
+    }
+  }
+
+  const ext = path.extname(filePath);
+
+  fs.readFile(filePath, (err, data) => {
+    if (err) {
+      res.statusCode = 500;
+      res.end(`Error reading file: ${err.message}`);
       return;
     }
 
-    // if is a directory search for index file matching the extention
-    if (fs.statSync(pathname).isDirectory()) pathname += '/index' + ext;
-
-    // read file from file system
-    fs.readFile(pathname, function(err, data) {
-      if (err) {
-        res.statusCode = 500;
-        res.end(`Error getting the file: ${err}.`);
-      } else {
-        // Website you wish to allow to connect
-        res.setHeader('Access-Control-Allow-Origin', '*');
-
-        // Request methods you wish to allow
-        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-
-        // Request headers you wish to allow
-        res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
-
-        // Set to true if you need the website to include cookies in the requests sent
-        // to the API (e.g. in case you use sessions)
-        res.setHeader('Access-Control-Allow-Credentials', true);
-
-        // if the file is found, set Content-type and send data
-        res.setHeader('Content-type', map[ext] || 'text/plain');
-        res.end(data);
-      }
-    });
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader(
+      'Access-Control-Allow-Methods',
+      'GET, POST, OPTIONS, PUT, PATCH, DELETE'
+    );
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      'X-Requested-With,content-type'
+    );
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Content-Type', mimeMap[ext] || 'text/plain');
+    res.end(data);
   });
-}).listen(parseInt(port));
+});
 
-console.log(`Server listening on port ${port}`);
+server.listen(parseInt(port, 10), () => {
+  console.log(`Static server listening on port ${port}`);
+});

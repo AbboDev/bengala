@@ -3,11 +3,11 @@
  * _beng$uid: user ID / server socket ID
  * _beng$pid: page ID
  */
-var _bengala = (function() {
+var _bengala = (function () {
   'use strict';
 
   var _protected = {
-    create: function(uri) {
+    create: function (uri) {
       if (window.WebSocket) {
         try {
           return new WebSocket(uri);
@@ -21,16 +21,16 @@ var _bengala = (function() {
       }
     },
 
-    errorHandler: function(error) {
+    errorHandler: function (error) {
       console.error('WebSocket error: ', error);
     },
 
-    closeHandler: function() {
+    closeHandler: function () {
       console.info('WebSocket is closed');
     },
 
-    connect: function(ws, clock, bengala) {
-      ws.onmessage = function(message) {
+    connect: function (ws, clock, bengala) {
+      ws.onmessage = function (message) {
         var data;
 
         try {
@@ -47,7 +47,7 @@ var _bengala = (function() {
       ws.onerror = this.errorHandler;
       ws.onclose = this.closeHandler;
 
-      ws.onopen = function() {
+      ws.onopen = function () {
         console.info('WebSocket is connected');
 
         var init = {
@@ -60,7 +60,7 @@ var _bengala = (function() {
           init.uid = bengala.$uid;
         }
 
-        ws.send(JSON.stringify(init), function(error) {
+        ws.send(JSON.stringify(init), function (error) {
           if (error == undefined) {
             return;
           } else {
@@ -69,7 +69,7 @@ var _bengala = (function() {
         });
       };
 
-      var int = setInterval(function() {
+      var int = setInterval(function () {
         var heart_beat = {
           ts: Date.now(),
           wid: bengala.$wid,
@@ -78,7 +78,7 @@ var _bengala = (function() {
         };
 
         if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify(heart_beat), function(error) {
+          ws.send(JSON.stringify(heart_beat), function (error) {
             if (error == undefined) {
               return;
             } else {
@@ -98,17 +98,24 @@ var _bengala = (function() {
 
       $wid: null,
       $uid: null,
-      $pid: function() {
+      $pid: function () {
         return encodeURIComponent(btoa(window.location.pathname));
       },
-      setUserId: function(uid) {
+      setUserId: function (uid) {
         this.$uid = uid;
         var d = new Date();
-        d.setTime(d.getTime() + (60 * 60 * 1000));
-        var expires = "expires=" + d.toUTCString();
-        document.cookie = this.prefix + this.$uid + '=' + this.$pid() + '; expires=' + expires + '; path=/';
+        d.setTime(d.getTime() + 60 * 60 * 1000);
+        var expires = 'expires=' + d.toUTCString();
+        document.cookie =
+          this.prefix +
+          this.$uid +
+          '=' +
+          this.$pid() +
+          '; expires=' +
+          expires +
+          '; path=/';
       },
-      checkUserId: function() {
+      checkUserId: function () {
         var cookies = document.cookie.split(';');
         let exist = false;
 
@@ -133,17 +140,19 @@ var _bengala = (function() {
 
     domain: 'bengala.crystalware.test',
     ports: {
-      'ws': 9080,
-      'wss': 9443
+      ws: 9080,
+      wss: 9443
     },
 
-    getPath: function(secure = false) {
-      var protocols = (function(object) {
+    getPath: function (secure = false) {
+      var protocols = (function (object) {
         if (!Object.keys) {
-          Object.keys = (function() {
+          Object.keys = (function () {
             'use strict';
             var hasOwnProperty = Object.prototype.hasOwnProperty,
-              hasDontEnumBug = !({toString: null}).propertyIsEnumerable('toString'),
+              hasDontEnumBug = !{ toString: null }.propertyIsEnumerable(
+                'toString'
+              ),
               dontEnums = [
                 'toString',
                 'toLocaleString',
@@ -155,12 +164,17 @@ var _bengala = (function() {
               ],
               dontEnumsLength = dontEnums.length;
 
-            return function(obj) {
-              if (typeof obj !== 'object' && (typeof obj !== 'function' || obj === null)) {
+            return function (obj) {
+              if (
+                typeof obj !== 'object' &&
+                (typeof obj !== 'function' || obj === null)
+              ) {
                 throw new TypeError('Object.keys called on non-object');
               }
 
-              var result = [], prop, i;
+              var result = [],
+                prop,
+                i;
 
               for (prop in obj) {
                 if (hasOwnProperty.call(obj, prop)) {
@@ -177,29 +191,37 @@ var _bengala = (function() {
               }
               return result;
             };
-          }());
+          })();
         }
 
         return Object.keys(object);
       })(this.ports);
 
-      return ((!secure) ? protocols[0]: protocols[1])
-        + '://' + this.domain + ':'
-        + ((!secure) ? this.ports['ws']: this.ports['wss']);
+      return (
+        (!secure ? protocols[0] : protocols[1]) +
+        '://' +
+        this.domain +
+        ':' +
+        (!secure ? this.ports['ws'] : this.ports['wss'])
+      );
     },
 
     clockRate: 1000,
 
-    v: function() {
+    v: function () {
       return '0.0.1';
     },
 
-    init: function() {
+    init: function () {
       this.wait();
     },
 
-    wait: function() {
-      if (typeof _beng$wid !== 'undefined' && _beng$wid !== null && _beng$wid !== false) {
+    wait: function () {
+      if (
+        typeof _beng$wid !== 'undefined' &&
+        _beng$wid !== null &&
+        _beng$wid !== false
+      ) {
         this._beng.$wid = _beng$wid;
       }
 
@@ -212,7 +234,7 @@ var _bengala = (function() {
       } else {
         setTimeout(this.wait.bind(this), 250);
       }
-    },
+    }
   };
 
   // return bengala;

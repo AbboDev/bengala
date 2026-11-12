@@ -1,3 +1,4 @@
 allowBuilds:
   fsevents: true
   nodemon: true
+minimumReleaseAge: 0
